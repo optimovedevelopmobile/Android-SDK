@@ -2,10 +2,10 @@ package com.optimove.sdk.optimovemobileclientfull;
 
 import android.app.Application;
 
-import com.optimove.optimove_sdk.main.ConfigurationFinishedListener;
-import com.optimove.optimove_sdk.main.InitToken;
-import com.optimove.optimove_sdk.main.Optimove;
-import com.optimove.optimove_sdk.main.tools.OptiLogger;
+import com.optimove.sdk.optimove_sdk.main.ConfigurationFinishedListener;
+import com.optimove.sdk.optimove_sdk.main.InitToken;
+import com.optimove.sdk.optimove_sdk.main.Optimove;
+import com.optimove.sdk.optimove_sdk.main.tools.OptiLogger;
 
 public class MyApplication extends Application {
 
