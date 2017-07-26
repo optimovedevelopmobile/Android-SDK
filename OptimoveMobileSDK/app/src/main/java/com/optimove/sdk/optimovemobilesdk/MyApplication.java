@@ -2,8 +2,8 @@ package com.optimove.sdk.optimovemobilesdk;
 
 import android.app.Application;
 
-import com.optimove.optimove_sdk.main.InitToken;
-import com.optimove.optimove_sdk.main.Optimove;
+import com.optimove.sdk.optimove_sdk.main.InitToken;
+import com.optimove.sdk.optimove_sdk.main.Optimove;
 
 public class MyApplication extends Application {
 
