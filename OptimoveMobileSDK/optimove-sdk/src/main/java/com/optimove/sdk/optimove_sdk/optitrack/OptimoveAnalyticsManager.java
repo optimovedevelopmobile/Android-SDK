@@ -77,6 +77,8 @@ public class OptimoveAnalyticsManager {
 
     public void logEvent(OptimoveEvent event, OptimoveEventSentListener listener) {
 
+        if (!eventsValidator.getEventConfig(event.getName()).isSupportedOnOptitrack())
+            return;
         EventSentResult error = eventsValidator.lookForError(event);
         if (error == null) {
             sendEvent(event);

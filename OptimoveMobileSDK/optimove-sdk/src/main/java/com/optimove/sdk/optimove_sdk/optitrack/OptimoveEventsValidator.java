@@ -2,6 +2,7 @@ package com.optimove.sdk.optimove_sdk.optitrack;
 
 import android.support.annotation.Nullable;
 
+import com.optimove.sdk.optimove_sdk.main.OptimoveComponentType;
 import com.optimove.sdk.optimove_sdk.main.entities.OptimoveEvent;
 import com.optimove.sdk.optimove_sdk.main.tools.OptiLogger;
 
@@ -30,7 +31,6 @@ class OptimoveEventsValidator {
             EventConfig eventConfig = EventConfig.fromJson(eventsDataJson);
             eventsConfigs.put(eventName, eventConfig);
         }
-        OptiLogger.d("WE HAVE EVENTS!!!!", eventsConfigs.toString());
     }
 
     public EventSentResult lookForError(OptimoveEvent event) {

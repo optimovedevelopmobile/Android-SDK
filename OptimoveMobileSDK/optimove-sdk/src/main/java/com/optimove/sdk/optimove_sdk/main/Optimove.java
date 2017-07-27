@@ -16,8 +16,8 @@ import com.optimove.sdk.optimove_sdk.main.entities.OptimoveEvent;
 import com.optimove.sdk.optimove_sdk.main.tools.BackendInteractor;
 import com.optimove.sdk.optimove_sdk.main.tools.OptiLogger;
 import com.optimove.sdk.optimove_sdk.optipush.firebase.OptimoveFirebaseInteractor;
-import com.optimove.sdk.optimove_sdk.optitrack.OptimoveEventSentListener;
 import com.optimove.sdk.optimove_sdk.optitrack.OptimoveAnalyticsManager;
+import com.optimove.sdk.optimove_sdk.optitrack.OptimoveEventSentListener;
 import com.optimove.sdk.optimove_sdk.optitrack.OptitrackConstants;
 
 import org.json.JSONException;
@@ -70,7 +70,6 @@ final public class Optimove {
         FirebaseMessaging.getInstance().unsubscribeFromTopic("test_" + packageName);
     }
 
-    // TODO: 7/18/2017 Potential memory leak, think about creating a custom Application subclass or moving Context everywhere
     private Context context;
     private ComponentsMonitor componentsMonitor;
     private OptimoveFirebaseInteractor firebaseInteractor;
@@ -112,7 +111,8 @@ final public class Optimove {
 
     public void logEvent(OptimoveEvent event, OptimoveEventSentListener listener) {
 
-        analyticsManager.logEvent(event, listener);
+        if (componentsMonitor.getComponentState(OptimoveComponentType.OPTITRACK) == OptimoveComponentState.ACTIVE)
+            analyticsManager.logEvent(event, listener);
     }
 
     public Context getContext() {
@@ -207,9 +207,12 @@ final public class Optimove {
         @Override
         public void onResponse(JSONObject response) {
 
-            extractComponentsState(response);
-            initOptiTrack(extractOptiTrackData(response));
-            initOptiPush(extractOptiPushData(response));
+            int permittedComponents = extractComponentsState(response);
+            componentsCounter = new AtomicInteger(permittedComponents);
+            if (componentsMonitor.getComponentState(OptimoveComponentType.OPTITRACK) == OptimoveComponentState.PERMITTED)
+                initOptiTrack(extractOptiTrackData(response));
+            if (componentsMonitor.getComponentState(OptimoveComponentType.OPTIPUSH) == OptimoveComponentState.PERMITTED)
+                initOptiPush(extractOptiPushData(response));
         }
 
         @Override
@@ -238,21 +241,33 @@ final public class Optimove {
             }
         }
 
-        private void extractComponentsState(JSONObject response) {
+        private int extractComponentsState(JSONObject response) {
 
-            OptimoveComponentState optitrackState = OptimoveComponentState.DENIED;
-            OptimoveComponentState optipushState = OptimoveComponentState.DENIED;
-            OptimoveComponentState realtimeState = OptimoveComponentState.DENIED;
-            try {
-                optitrackState = response.getBoolean(OPTITRACK_ENABLED) ? OptimoveComponentState.PERMITTED : OptimoveComponentState.DENIED;
-                optipushState = response.getBoolean(OPTIPUSH_ENABLED) ? OptimoveComponentState.PERMITTED : OptimoveComponentState.DENIED;
-                realtimeState = response.getBoolean(REALTIME_ENABLED) ? OptimoveComponentState.PERMITTED : OptimoveComponentState.DENIED;
-            } catch (JSONException e) {
-                OptiLogger.w(this, e);
-            }
+            OptimoveComponentState optitrackState = extractStateOfComponent(response, OPTITRACK_ENABLED);
+            OptimoveComponentState optipushState = extractStateOfComponent(response, OPTIPUSH_ENABLED);
+            OptimoveComponentState realtimeState = extractStateOfComponent(response, REALTIME_ENABLED);
             componentsMonitor.stateMap.put(OptimoveComponentType.OPTITRACK, optitrackState);
             componentsMonitor.stateMap.put(OptimoveComponentType.OPTIPUSH, optipushState);
             componentsMonitor.stateMap.put(OptimoveComponentType.REALTIME, realtimeState);
+            return countPermittedComponents(new OptimoveComponentState[]{optitrackState, optipushState, realtimeState});
+        }
+
+        private OptimoveComponentState extractStateOfComponent(JSONObject jsonData, String component) {
+            try {
+                return jsonData.getBoolean(component) ? OptimoveComponentState.PERMITTED : OptimoveComponentState.DENIED;
+            } catch (JSONException e) {
+                OptiLogger.w(this, e);
+                return OptimoveComponentState.DENIED;
+            }
+        }
+
+        private int countPermittedComponents(OptimoveComponentState[] states) {
+
+            int permittedComps = 0;
+            for (OptimoveComponentState state : states) {
+                permittedComps += state == OptimoveComponentState.PERMITTED ? 1 : 0;
+            }
+            return permittedComps;
         }
 
         private JSONObject extractOptiTrackData(JSONObject jsonObject) {
@@ -280,17 +295,15 @@ final public class Optimove {
 
         private void initOptiTrack(JSONObject optiTrackData) {
 
-            if (optiTrackData != null) {
-                componentsCounter.incrementAndGet();
+            if (optiTrackData != null)
                 analyticsManager.setup(optiTrackData, this);
-            } else {
+            else
                 componentsMonitor.stateMap.put(OptimoveComponentType.OPTITRACK, OptimoveComponentState.BROKEN);
-            }
+
         }
 
         private void initOptiPush(JSONObject jsonObject) {
 
-            componentsCounter.incrementAndGet();
             firebaseInteractor.setup(jsonObject, this);
         }
     }
