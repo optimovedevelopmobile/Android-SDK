@@ -15,44 +15,49 @@ public final class OptiLogger {
      *****/
 
     public static void v(String tag, @Nullable Throwable throwable, String message, Object... args) {
+        String finalTag = "Optimove-Mobile-SDK-" + tag;
         if (!BuildConfig.DEBUG) {
             if (throwable != null)
-                Log.v(tag, String.format(message, args), throwable);
+                Log.v(finalTag, String.format(message, args), throwable);
             else
-                Log.v(tag, String.format(message, args));
+                Log.v(finalTag, String.format(message, args));
         }
     }
 
     public static void i(String tag, @Nullable Throwable throwable, String message, Object... args) {
+        String finalTag = "Optimove-Mobile-SDK-" + tag;
         if (!BuildConfig.DEBUG) {
             if (throwable != null)
-                Log.i(tag, String.format(message, args), throwable);
+                Log.i(finalTag, String.format(message, args), throwable);
             else
-                Log.i(tag, String.format(message, args));
+                Log.i(finalTag, String.format(message, args));
         }
     }
 
     public static void d(String tag, @Nullable Throwable throwable, String message, Object... args) {
+        String finalTag = "Optimove-Mobile-SDK-" + tag;
         if (!BuildConfig.DEBUG) {
             if (throwable != null)
-                Log.d(tag, String.format(message, args), throwable);
+                Log.d(finalTag, String.format(message, args), throwable);
             else
-                Log.d(tag, String.format(message, args));
+                Log.d(finalTag, String.format(message, args));
         }
     }
 
     public static void w(String tag, @Nullable Throwable throwable, String message, Object... args) {
+        String finalTag = "Optimove-Mobile-SDK-" + tag;
         if (throwable != null)
-            Log.w(tag, String.format(message, args), throwable);
+            Log.w(finalTag, String.format(message, args), throwable);
         else
-            Log.w(tag, String.format(message, args));
+            Log.w(finalTag, String.format(message, args));
     }
 
     public static void e(String tag, @Nullable Throwable throwable, String message, Object... args) {
+        String finalTag = "Optimove-Mobile-SDK-" + tag;
         if (throwable != null)
-            Log.e(tag, String.format(message, args), throwable);
+            Log.e(finalTag, String.format(message, args), throwable);
         else
-            Log.e(tag, String.format(message, args));
+            Log.e(finalTag, String.format(message, args));
     }
 
     /*****

@@ -10,12 +10,12 @@ import com.google.firebase.FirebaseOptions;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.iid.FirebaseInstanceId;
-import com.optimove.sdk.optimove_sdk.main.OptimoveComponentSetupListener;
+import com.optimove.sdk.optimove_sdk.R;
 import com.optimove.sdk.optimove_sdk.main.Optimove;
+import com.optimove.sdk.optimove_sdk.main.OptimoveComponentSetupListener;
 import com.optimove.sdk.optimove_sdk.main.OptimoveComponentType;
 import com.optimove.sdk.optimove_sdk.main.tools.OptiLogger;
 import com.optimove.sdk.optimove_sdk.optipush.registration.OptiPushClientRegistrar;
-import com.optimove.sdk.optimove_sdk.R;
 
 import org.json.JSONException;
 import org.json.JSONObject;

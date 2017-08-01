@@ -43,9 +43,9 @@ public class MainActivity extends AppCompatActivity implements OptimoveEventSent
         public Map<String, Object> getParameters() {
 
             Map<String, Object> params = new HashMap<>(3);
-            params.put("action_name", "Banana");
-            params.put("action_value", 100);
-            params.put("action_price", 200);
+            params.put("action_name", "Banana3");
+            params.put("action_value", 300);
+            params.put("action_price", 600);
             return params;
         }
     }

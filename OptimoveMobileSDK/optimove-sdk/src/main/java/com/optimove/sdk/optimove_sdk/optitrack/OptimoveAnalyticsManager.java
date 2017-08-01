@@ -6,10 +6,10 @@ import android.support.annotation.NonNull;
 
 import com.optimove.sdk.optimove_sdk.main.Optimove;
 import com.optimove.sdk.optimove_sdk.main.OptimoveComponentSetupListener;
+import com.optimove.sdk.optimove_sdk.main.OptimoveComponentType;
 import com.optimove.sdk.optimove_sdk.main.entities.OptimoveEvent;
 import com.optimove.sdk.optimove_sdk.main.tools.FileUtils;
 import com.optimove.sdk.optimove_sdk.main.tools.OptiLogger;
-import com.optimove.sdk.optimove_sdk.main.OptimoveComponentType;
 import com.optimove.sdk.optimove_sdk.optipush.registration.OptiPushClientRegistrar;
 
 import org.json.JSONException;
@@ -57,6 +57,7 @@ public class OptimoveAnalyticsManager {
         OptiPushClientRegistrar registrar = new OptiPushClientRegistrar(context);
         if (registrar.isFirstConversion())
             registrar.registerNewUser(userId, email, mainTracker.getVisitorId());
+        mainTracker.setUserId(userId);
         userIdsSp.edit().putString(USER_ID_KEY, userId).putString(USER_EMAIL_KEY, email).apply();
     }
 

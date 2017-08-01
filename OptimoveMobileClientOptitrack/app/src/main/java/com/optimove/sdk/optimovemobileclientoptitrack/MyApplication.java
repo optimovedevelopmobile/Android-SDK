@@ -2,7 +2,7 @@ package com.optimove.sdk.optimovemobileclientoptitrack;
 
 import android.app.Application;
 
-import com.optimove.sdk.optimove_sdk.main.ConfigurationFinishedListener;
+import com.optimove.sdk.optimove_sdk.main.OptimoveConfigurationListener;
 import com.optimove.sdk.optimove_sdk.main.InitToken;
 import com.optimove.sdk.optimove_sdk.main.Optimove;
 import com.optimove.sdk.optimove_sdk.main.tools.OptiLogger;
@@ -14,7 +14,7 @@ public class MyApplication extends Application {
         super.onCreate();
         InitToken initToken = new InitToken("c0458fb79ea03ef7be4589549a969ede", "1.0.0");
         final long start = System.currentTimeMillis();
-        Optimove.configure(this, initToken, new ConfigurationFinishedListener() {
+        Optimove.configure(this, initToken, new OptimoveConfigurationListener() {
 
             @Override
             public void onConfigurationFinished() {

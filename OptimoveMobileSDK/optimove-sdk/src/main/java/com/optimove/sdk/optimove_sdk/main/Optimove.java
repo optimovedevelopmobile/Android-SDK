@@ -6,10 +6,13 @@ import android.content.Context;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 
 import com.android.volley.Response;
 import com.android.volley.VolleyError;
+import com.google.android.gms.common.ConnectionResult;
+import com.google.android.gms.common.GoogleApiAvailability;
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.messaging.FirebaseMessaging;
 import com.optimove.sdk.optimove_sdk.main.entities.OptimoveEvent;
@@ -40,7 +43,7 @@ final public class Optimove {
         return shared;
     }
 
-    public static void configure(Application application, InitToken initToken, @Nullable ConfigurationFinishedListener configsListener) {
+    public static void configure(Application application, InitToken initToken, @Nullable OptimoveConfigurationListener configsListener) {
 
         if (shared != null)
             return;
@@ -187,9 +190,9 @@ final public class Optimove {
         private InitToken initToken;
         private AtomicInteger componentsCounter;
         @Nullable
-        private ConfigurationFinishedListener configsListener;
+        private OptimoveConfigurationListener configsListener;
 
-        Initializer(InitToken initToken, @Nullable ConfigurationFinishedListener configsListener) {
+        Initializer(InitToken initToken, @Nullable OptimoveConfigurationListener configsListener) {
 
             this.initToken = initToken;
             this.componentsCounter = new AtomicInteger(0);
@@ -224,20 +227,14 @@ final public class Optimove {
         @Override
         public void onSetupFinished(OptimoveComponentType type, boolean success) {
 
-            if (!success) {
+            if (success) {
+                componentsMonitor.stateMap.put(type, OptimoveComponentState.ACTIVE);
+                OptiLogger.d(this, "Initialization finished for %s", type.name());
+                if (componentsCounter.decrementAndGet() == 0 && configsListener != null)
+                    notifyConfigurationFinished(configsListener);
+            } else {
                 componentsMonitor.stateMap.put(type, OptimoveComponentState.BROKEN);
                 OptiLogger.w(this, "Failed to initialize %s", type.name());
-                return;
-            }
-
-            componentsMonitor.stateMap.put(type, OptimoveComponentState.ACTIVE);
-            if (componentsCounter.decrementAndGet() == 0 && configsListener != null) {
-                new Handler(Looper.getMainLooper()).post(new Runnable() {
-                    @Override
-                    public void run() {
-                        configsListener.onConfigurationFinished();
-                    }
-                });
             }
         }
 
@@ -304,7 +301,27 @@ final public class Optimove {
 
         private void initOptiPush(JSONObject jsonObject) {
 
+            final int servicesAvailable = GoogleApiAvailability.getInstance().isGooglePlayServicesAvailable(context);
+            if (servicesAvailable != ConnectionResult.SUCCESS) {
+                new Handler(Looper.getMainLooper()).post(new Runnable() {
+                    @Override
+                    public void run() {
+//                        if (configsListener != null)
+//                            configsListener.googlePlayServicesFailed(servicesAvailable);
+                    }
+                });
+                return;
+            }
             firebaseInteractor.setup(jsonObject, this);
+        }
+
+        private void notifyConfigurationFinished(@NonNull final OptimoveConfigurationListener configsListener) {
+            new Handler(Looper.getMainLooper()).post(new Runnable() {
+                @Override
+                public void run() {
+                    configsListener.onConfigurationFinished();
+                }
+            });
         }
     }
 

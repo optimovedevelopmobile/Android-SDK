@@ -28,7 +28,9 @@ public class MainActivity extends AppCompatActivity implements OptimoveEventSent
 
     public void failEvent(View view) {
 
-        Optimove.getInstance().logEvent(new MyBadEvent(), this);
+//        Optimove.getInstance().logEvent(new MyBadEvent(), this);
+        Optimove.getInstance().updateUserSignIn("TEST");
+//        Optimove.getInstance().updateUserSignIn(null);
     }
 
     public void sendSecondEvent(View view) {
