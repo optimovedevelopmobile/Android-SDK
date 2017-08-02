@@ -20,6 +20,8 @@ import com.optimove.sdk.optimove_sdk.optipush.registration.OptiPushClientRegistr
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.IOException;
+
 import static com.optimove.sdk.optimove_sdk.optipush.firebase.OptimoveFirebaseInteractor.FirebaseInteractorConstants.*;
 
 public class OptimoveFirebaseInteractor {
@@ -98,7 +100,7 @@ public class OptimoveFirebaseInteractor {
             sdkFa = FirebaseApp.initializeApp(context, firebaseKeys.toFirebaseOptions(), sdkFaName);
             initMasterFa(context);
             setupListener.onSetupFinished(OptimoveComponentType.OPTIPUSH, true);
-            FirebaseInstanceId.getInstance(sdkFa).getToken();
+            initFcmToken(firebaseKeys.getGcmSenderId());
             new OptiPushClientRegistrar(context).completeLastRegistrationIfFailed();
         }
 
@@ -106,6 +108,21 @@ public class OptimoveFirebaseInteractor {
 
             FirebaseOptions masterFirebaseOptions = getMasterFaKeys(context.getResources()).toFirebaseOptions();
             masterFa = FirebaseApp.initializeApp(context, masterFirebaseOptions, MASTER_FA_NAME);
+        }
+
+        private void initFcmToken(final String gcmSenderId) {
+
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        String token = FirebaseInstanceId.getInstance().getToken(gcmSenderId, "FCM");
+                        OptiLogger.d("COOL_TOKEN", token);
+                    } catch (IOException e) {
+                        OptiLogger.e(this, e);
+                    }
+                }
+            }).start();
         }
 
         private FirebaseKeys getMasterFaKeys(Resources resources) {

@@ -148,7 +148,8 @@ final public class Optimove {
         @Override
         public void onActivityStopped(Activity activity) {
 
-            analyticsManager.dispatchAllEvents();
+            if (componentsMonitor.getComponentState(OptimoveComponentType.OPTITRACK) == OptimoveComponentState.ACTIVE)
+                analyticsManager.dispatchAllEvents();
         }
 
         @Override

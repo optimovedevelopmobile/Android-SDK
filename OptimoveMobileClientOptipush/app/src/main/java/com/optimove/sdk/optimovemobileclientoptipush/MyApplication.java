@@ -2,6 +2,7 @@ package com.optimove.sdk.optimovemobileclientoptipush;
 
 import android.app.Application;
 
+import com.google.firebase.iid.FirebaseInstanceId;
 import com.optimove.sdk.optimove_sdk.main.OptimoveConfigurationListener;
 import com.optimove.sdk.optimove_sdk.main.InitToken;
 import com.optimove.sdk.optimove_sdk.main.Optimove;
@@ -20,6 +21,9 @@ public class MyApplication extends Application {
             public void onConfigurationFinished() {
                 long end = System.currentTimeMillis();
                 OptiLogger.d("DONE_CONFIGURE", "Loading took %d millis", (end - start));
+                String token = FirebaseInstanceId.getInstance().getToken();
+                if (token != null)
+                    OptiLogger.d("TOKEN_TOKEN", token);
             }
         });
     }

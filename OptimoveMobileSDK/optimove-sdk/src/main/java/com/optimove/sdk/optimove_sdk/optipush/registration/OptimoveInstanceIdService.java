@@ -11,7 +11,8 @@ public class OptimoveInstanceIdService extends FirebaseInstanceIdService {
     public void onTokenRefresh() {
 
         String token = FirebaseInstanceId.getInstance(Optimove.getInstance().getSdkFa()).getToken();
-        OptiLogger.d("NOTICE_ME_SENPAI", token);
+        if (token != null)
+            OptiLogger.d("REFRESHED_TOKEN", token);
         OptiPushClientRegistrar clientRegistrar = new OptiPushClientRegistrar(this);
         registerByToken(clientRegistrar, token);
         updateTopicsSubscription(clientRegistrar, token != null);

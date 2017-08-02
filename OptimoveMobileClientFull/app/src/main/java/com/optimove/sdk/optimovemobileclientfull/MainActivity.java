@@ -3,7 +3,12 @@ package com.optimove.sdk.optimovemobileclientfull;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.view.View;
+import android.widget.TextView;
 
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
 import com.optimove.sdk.optimove_sdk.main.Optimove;
 import com.optimove.sdk.optimove_sdk.main.entities.OptimoveEvent;
 import com.optimove.sdk.optimove_sdk.main.tools.OptiLogger;
@@ -19,6 +24,20 @@ public class MainActivity extends AppCompatActivity implements OptimoveEventSent
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        FirebaseDatabase.getInstance().getReference().child("message").addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(DataSnapshot dataSnapshot) {
+                TextView tv = (TextView) findViewById(R.id.mainOutputTextView);
+                Object value = dataSnapshot.getValue();
+                if (value != null)
+                    tv.setText(value.toString());
+            }
+
+            @Override
+            public void onCancelled(DatabaseError databaseError) {
+                OptiLogger.d("ASDASDASDASDAdas", databaseError.getMessage());
+            }
+        });
     }
 
     public void sendEvent(View view) {

@@ -3,7 +3,7 @@ apply plugin: 'com.github.dcendents.android-maven'
 apply plugin: 'com.jfrog.bintray'
 
 group = 'com.optimove.sdk'
-version = '1.0.0-alpha5'
+version = '1.0.0-alpha11'
 
 android {
     compileSdkVersion 26
@@ -35,10 +35,10 @@ dependencies {
 
     compile 'com.android.volley:volley:1.0.0'
     compile 'org.piwik.sdk:piwik-sdk:2.0.0'
-    compile 'com.google.firebase:firebase-core:11.0.1'
-    compile 'com.google.firebase:firebase-database:11.0.1'
-    compile 'com.google.firebase:firebase-messaging:11.0.1'
-    compile 'com.google.firebase:firebase-invites:11.0.1'
+    compile 'com.google.firebase:firebase-core:11.0.4'
+    compile 'com.google.firebase:firebase-database:11.0.4'
+    compile 'com.google.firebase:firebase-messaging:11.0.4'
+    compile 'com.google.firebase:firebase-invites:11.0.4'
 
     testCompile 'junit:junit:4.12'
 }
@@ -48,7 +48,7 @@ install {
         pom.project {
             group "com.optimove.sdk"
             artifactId "optimove-sdk"
-            version "1.0.0-alpha5"
+            version "1.0.0-alpha11"
             packaging "aar"
             name "OptimoveMobileSDK"
         }
