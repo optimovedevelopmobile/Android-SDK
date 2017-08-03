@@ -13,12 +13,12 @@ import com.android.volley.Response;
 import com.android.volley.VolleyError;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GoogleApiAvailability;
-import com.google.firebase.FirebaseApp;
 import com.google.firebase.messaging.FirebaseMessaging;
 import com.optimove.sdk.optimove_sdk.main.entities.OptimoveEvent;
 import com.optimove.sdk.optimove_sdk.main.tools.BackendInteractor;
 import com.optimove.sdk.optimove_sdk.main.tools.OptiLogger;
 import com.optimove.sdk.optimove_sdk.optipush.firebase.OptimoveFirebaseInteractor;
+import com.optimove.sdk.optimove_sdk.optipush.registration.OptiPushClientRegistrar;
 import com.optimove.sdk.optimove_sdk.optitrack.OptimoveAnalyticsManager;
 import com.optimove.sdk.optimove_sdk.optitrack.OptimoveEventSentListener;
 import com.optimove.sdk.optimove_sdk.optitrack.OptitrackConstants;
@@ -43,7 +43,7 @@ final public class Optimove {
         return shared;
     }
 
-    public static void configure(Application application, InitToken initToken, @Nullable OptimoveConfigurationListener configsListener) {
+    public static void configure(Application application, TenantToken tenantToken, @Nullable OptimoveConfigurationListener configsListener) {
 
         if (shared != null)
             return;
@@ -54,7 +54,8 @@ final public class Optimove {
                 return;
         }
         application.registerActivityLifecycleCallbacks(shared.new OptimoveActivityLifecycleObserver());
-        shared.new Initializer(initToken, configsListener).initSdkComponents();
+        shared.tenantToken = tenantToken;
+        shared.new Initializer(configsListener).initSdkComponents();
     }
 
     public static void startTestMode() {
@@ -74,22 +75,30 @@ final public class Optimove {
     }
 
     private Context context;
+    private TenantToken tenantToken;
+    private UserInfo userInfo;
     private ComponentsMonitor componentsMonitor;
     private OptimoveFirebaseInteractor firebaseInteractor;
-
     private OptimoveAnalyticsManager analyticsManager;
 
     private Optimove(Context context) {
 
         this.context = context;
+        this.tenantToken = null;
+        this.userInfo = UserInfo.newInstance(context);
         this.componentsMonitor = new ComponentsMonitor();
         this.firebaseInteractor = new OptimoveFirebaseInteractor();
-        this.analyticsManager = new OptimoveAnalyticsManager(context);
+        this.analyticsManager = new OptimoveAnalyticsManager();
     }
 
-    public FirebaseApp getSdkFa() {
+    public boolean clientHasFirebase() {
 
-        return firebaseInteractor.getSdkFa();
+        return firebaseInteractor.doesClientHaveFirebase();
+    }
+
+    public String getSdkFaSenderId() {
+
+        return firebaseInteractor.getSdkFaSenderId();
     }
 
     public void updateUserSignIn(String userId) {
@@ -99,12 +108,19 @@ final public class Optimove {
 
     public void updateUserSignIn(String userId, String email) {
 
-        analyticsManager.updateUserInfo(context, userId, email);
+        userInfo.setUserId(userId);
+        userInfo.setEmail(email);
+        analyticsManager.userIdWasUpdated(userId);
+        OptiPushClientRegistrar registrar = new OptiPushClientRegistrar(context);
+        if (registrar.isFirstConversion())
+            registrar.registerNewUser();
     }
 
     public void updateUserSignedOut() {
 
-        analyticsManager.updateUserInfo(context, null, null);
+        userInfo.setUserId(null);
+        userInfo.setEmail(null);
+        analyticsManager.userIdWasUpdated(null);
     }
 
     public void setupOptiTrackFromLocalStorage() {
@@ -120,6 +136,14 @@ final public class Optimove {
 
     public Context getContext() {
         return context;
+    }
+
+    public TenantToken getTenantToken() {
+        return tenantToken;
+    }
+
+    public UserInfo getUserInfo() {
+        return userInfo;
     }
 
     private class OptimoveActivityLifecycleObserver implements Application.ActivityLifecycleCallbacks {
@@ -188,14 +212,12 @@ final public class Optimove {
 
     private class Initializer implements OptimoveComponentSetupListener, Response.Listener<JSONObject>, Response.ErrorListener {
 
-        private InitToken initToken;
         private AtomicInteger componentsCounter;
         @Nullable
         private OptimoveConfigurationListener configsListener;
 
-        Initializer(InitToken initToken, @Nullable OptimoveConfigurationListener configsListener) {
+        Initializer(@Nullable OptimoveConfigurationListener configsListener) {
 
-            this.initToken = initToken;
             this.componentsCounter = new AtomicInteger(0);
             this.configsListener = configsListener;
         }
@@ -204,8 +226,8 @@ final public class Optimove {
 
             BackendInteractor backendInteractor = new BackendInteractor(context);
             backendInteractor.getJson().successListener(this).errorListener(this)
-                    .destination(initToken.getTenantToken(), initToken.getConfigVersion() + ".json")
-                    .execute();
+                    .destination(tenantToken.getToken(), tenantToken.getConfigVersion() + ".json")
+                    .send();
         }
 
         @Override

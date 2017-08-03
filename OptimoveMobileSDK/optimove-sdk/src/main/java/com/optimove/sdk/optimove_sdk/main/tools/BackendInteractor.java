@@ -73,7 +73,7 @@ public class BackendInteractor {
             return url != null && successListener != null;
         }
 
-        public abstract void execute();
+        public abstract void send();
     }
 
     public class JsonRequestBuilder extends RequestBuilder<JSONObject> {
@@ -83,7 +83,7 @@ public class BackendInteractor {
         }
 
         @Override
-        public void execute() {
+        public void send() {
 
             if (!validateState())
                 throw new IllegalStateException("Url and success listener must be set");

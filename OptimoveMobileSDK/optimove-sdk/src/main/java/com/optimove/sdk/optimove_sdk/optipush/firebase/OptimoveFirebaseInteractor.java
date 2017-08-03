@@ -26,9 +26,9 @@ import static com.optimove.sdk.optimove_sdk.optipush.firebase.OptimoveFirebaseIn
 
 public class OptimoveFirebaseInteractor {
 
-    private String sdkFaName;
     private FirebaseApp masterFa;
     private FirebaseApp sdkFa;
+    private boolean hasClientFa;
 
     public OptimoveFirebaseInteractor() {
     }
@@ -37,8 +37,7 @@ public class OptimoveFirebaseInteractor {
 
         Context context = Optimove.getInstance().getContext();
         FirebaseApp.initializeApp(context);
-        boolean hasClientFa = !FirebaseApp.getApps(context).isEmpty();
-        sdkFaName = hasClientFa ? SDK_FA_NAME : FirebaseApp.DEFAULT_APP_NAME;
+        hasClientFa = !FirebaseApp.getApps(context).isEmpty();
         new SdkFaInitCommand(context, setupListener).execute(initData);
     }
 
@@ -48,8 +47,14 @@ public class OptimoveFirebaseInteractor {
         return FirebaseDatabase.getInstance(app).getReference().child(path);
     }
 
-    public FirebaseApp getSdkFa() {
-        return sdkFa;
+    public boolean doesClientHaveFirebase() {
+
+        return hasClientFa;
+    }
+
+    public String getSdkFaSenderId() {
+
+        return sdkFa.getOptions().getGcmSenderId();
     }
 
     private class SdkFaInitCommand {
@@ -97,6 +102,7 @@ public class OptimoveFirebaseInteractor {
 
         private void initSdkFa(FirebaseKeys firebaseKeys) {
 
+            String sdkFaName = hasClientFa ? SDK_FA_NAME : FirebaseApp.DEFAULT_APP_NAME;
             sdkFa = FirebaseApp.initializeApp(context, firebaseKeys.toFirebaseOptions(), sdkFaName);
             initMasterFa(context);
             setupListener.onSetupFinished(OptimoveComponentType.OPTIPUSH, true);

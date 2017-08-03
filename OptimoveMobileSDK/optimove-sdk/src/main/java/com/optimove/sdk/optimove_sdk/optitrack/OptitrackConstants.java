@@ -4,10 +4,6 @@ package com.optimove.sdk.optimove_sdk.optitrack;
 public interface OptitrackConstants {
 
     String INIT_DATA_FILE_NAME = "initData.json";
-    String USER_IDS_SP = "user_ids";
-    String USER_ID_KEY = "userId";
-    String USER_EMAIL_KEY = "userId";
-    String VISITOR_ID_KEY = "visitorId";
 
     interface InitDataKeys {
 

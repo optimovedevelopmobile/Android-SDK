@@ -1,12 +1,12 @@
 package com.optimove.sdk.optimove_sdk.optitrack;
 
 import android.content.Context;
-import android.content.SharedPreferences;
 import android.support.annotation.NonNull;
 
 import com.optimove.sdk.optimove_sdk.main.Optimove;
 import com.optimove.sdk.optimove_sdk.main.OptimoveComponentSetupListener;
 import com.optimove.sdk.optimove_sdk.main.OptimoveComponentType;
+import com.optimove.sdk.optimove_sdk.main.UserInfo;
 import com.optimove.sdk.optimove_sdk.main.entities.OptimoveEvent;
 import com.optimove.sdk.optimove_sdk.main.tools.FileUtils;
 import com.optimove.sdk.optimove_sdk.main.tools.OptiLogger;
@@ -23,13 +23,11 @@ import static com.optimove.sdk.optimove_sdk.optitrack.OptitrackConstants.*;
 public class OptimoveAnalyticsManager {
 
     private Tracker mainTracker;
-    private final SharedPreferences userIdsSp;
     private OptimoveEventsValidator eventsValidator;
     private OptiTrackMetadata optiTrackMetadata;
 
-    public OptimoveAnalyticsManager(Context context) {
+    public OptimoveAnalyticsManager() {
 
-        userIdsSp = context.getSharedPreferences(USER_IDS_SP, Context.MODE_PRIVATE);
         eventsValidator = new OptimoveEventsValidator();
         optiTrackMetadata = new OptiTrackMetadata();
     }
@@ -50,25 +48,12 @@ public class OptimoveAnalyticsManager {
         if (!initialized)
             initialized = executeInit(initData);
         setupListener.onSetupFinished(OptimoveComponentType.OPTITRACK, initialized);
+
     }
 
-    public void updateUserInfo(Context context, String userId, String email) {
+    public void userIdWasUpdated(String userId) {
 
-        OptiPushClientRegistrar registrar = new OptiPushClientRegistrar(context);
-        if (registrar.isFirstConversion())
-            registrar.registerNewUser(userId, email, mainTracker.getVisitorId());
         mainTracker.setUserId(userId);
-        userIdsSp.edit().putString(USER_ID_KEY, userId).putString(USER_EMAIL_KEY, email).apply();
-    }
-
-    public String getUserId() {
-
-        return mainTracker.getUserId();
-    }
-
-    public String getVisitorId() {
-
-        return mainTracker.getVisitorId();
     }
 
     public void dispatchAllEvents() {
@@ -134,12 +119,12 @@ public class OptimoveAnalyticsManager {
 
     private void setupTrackerUserIds() {
 
-        String visitorId = userIdsSp.getString(VISITOR_ID_KEY, null);
-        if (visitorId != null)
-            mainTracker.setVisitorId(visitorId);
+        UserInfo userInfo = Optimove.getInstance().getUserInfo();
+        if (userInfo.getVisitorId() == null)
+            userInfo.setVisitorId(mainTracker.getVisitorId());
         else
-            userIdsSp.edit().putString(VISITOR_ID_KEY, mainTracker.getVisitorId()).apply();
-        mainTracker.setUserId(userIdsSp.getString(USER_ID_KEY, null));
+            mainTracker.setVisitorId(userInfo.getVisitorId());
+        mainTracker.setUserId(userInfo.getUserId());
     }
 
     interface ParametersDefinitions {

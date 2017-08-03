@@ -8,11 +8,17 @@ import com.android.volley.VolleyError;
 import com.google.firebase.iid.FirebaseInstanceId;
 import com.google.firebase.messaging.FirebaseMessaging;
 import com.optimove.sdk.optimove_sdk.main.Optimove;
+import com.optimove.sdk.optimove_sdk.main.TenantToken;
+import com.optimove.sdk.optimove_sdk.main.tools.BackendInteractor;
 import com.optimove.sdk.optimove_sdk.main.tools.OptiLogger;
 
+import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.IOException;
+
 import static com.optimove.sdk.optimove_sdk.optipush.registration.OptiPushClientRegistrar.RegistrarConstants.*;
+
 
 public class OptiPushClientRegistrar {
 
@@ -29,24 +35,37 @@ public class OptiPushClientRegistrar {
 
         if (logSp.getBoolean(LAST_REG_OPERATION_SUCCESS_KEY, true))
             return;
-        if (logSp.getString(LAST_REG_OPERATION_TOKEN_KEY, null) == null)
+        String token = logSp.getString(LAST_REG_OPERATION_TOKEN_KEY, null);
+        if (token == null)
             unregisterUserFromPush();
         else
-            registerUserForPush(FirebaseInstanceId.getInstance(Optimove.getInstance().getSdkFa()).getToken());
+            new UserRegistrationCommand(token).execute();
     }
 
-     public void unregisterUserFromPush() {
+    public void unregisterUserFromPush() {
 
-        UserPushToken userPushToken = generateUserPushToken(null);
-//        BackendInteractor backendInteractor = new BackendInteractor(context, "");
-        // TODO: 7/6/2017 Unregister at the MBAAS
+        new UserRegistrationCommand(null).execute();
     }
 
-    public void registerUserForPush(String token) {
+    public void registerUserForPush() {
 
-        UserPushToken userPushToken = generateUserPushToken(token);
-//        BackendInteractor backendInteractor = new BackendInteractor(context, "");
-        // TODO: 7/6/2017 Register at the MBAAS
+        final Optimove optimove = Optimove.getInstance();
+        if (optimove.clientHasFirebase()) {
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        String token = FirebaseInstanceId.getInstance().getToken(optimove.getSdkFaSenderId(), "FCM");
+                        new UserRegistrationCommand(token).execute();
+                    } catch (IOException e) {
+                        OptiLogger.e(this, e);
+                    }
+                }
+            }).start();
+        } else {
+            String token = FirebaseInstanceId.getInstance().getToken();
+            new UserRegistrationCommand(token).execute();
+        }
     }
 
     public void unregisterFromTopics() {
@@ -69,22 +88,10 @@ public class OptiPushClientRegistrar {
         return FirstConversionStatus.valueOf(conversionRawVal) == FirstConversionStatus.NA;
     }
 
-    public void registerNewUser(String userId, String email, String visitorId) {
+    public void registerNewUser() {
 
         logSp.edit().putInt(FIRST_CONVERSION_STATUS_KEY, FirstConversionStatus.PENDING.getRawValue()).apply();
-        generateUserPushToken(userId, email, visitorId);
-//        BackendInteractor backendInteractor = new BackendInteractor(context, "");
-        // TODO: 7/6/2017 Register at the MBAAS
-    }
-
-    private UserPushToken generateUserPushToken(String token) {
-
-        return null;
-    }
-
-    private UserPushToken generateUserPushToken(String userId, String email, String visitorId) {
-
-        return null;
+        registerUserForPush();
     }
 
     private class RegistrationResponder implements Response.Listener<JSONObject>, Response.ErrorListener {
@@ -99,6 +106,7 @@ public class OptiPushClientRegistrar {
         @Override
         public void onResponse(JSONObject response) {
 
+            OptiLogger.d(this, response.toString());
             SharedPreferences.Editor editor = logSp.edit().putBoolean(LAST_REG_OPERATION_SUCCESS_KEY, true);
             int conversionStatRaw = logSp.getInt(FIRST_CONVERSION_STATUS_KEY, 0);
             if (FirstConversionStatus.valueOf(conversionStatRaw) == FirstConversionStatus.PENDING)
@@ -112,6 +120,39 @@ public class OptiPushClientRegistrar {
             OptiLogger.w(this, "Failed destination register user set:\n%s", error.getMessage());
             logSp.edit().putBoolean(LAST_REG_OPERATION_SUCCESS_KEY, false)
                     .putString(LAST_REG_OPERATION_TOKEN_KEY, token).apply();
+        }
+    }
+
+    private class UserRegistrationCommand {
+
+        private String token;
+
+        public UserRegistrationCommand(String token) {
+            this.token = token;
+        }
+
+        public void execute() {
+
+            UserPushToken userPushToken = generateUserPushToken(token);
+            RegistrationResponder responder = new RegistrationResponder(token);
+            try {
+                new BackendInteractor(context).post(userPushToken.toJson())
+                .successListener(responder).errorListener(responder).destination("registration")
+                .send();
+            } catch (JSONException e) {
+                OptiLogger.e(this, e);
+            }
+        }
+
+        private UserPushToken generateUserPushToken(String token) {
+
+            Optimove optimove = Optimove.getInstance();
+            TenantToken tenantToken = optimove.getTenantToken();
+            return new UserPushToken.Builder()
+                    .setTenantId(tenantToken.getTenantId())
+                    .setUserInfo(optimove.getUserInfo())
+                    .setToken(token)
+                    .build();
         }
     }
 

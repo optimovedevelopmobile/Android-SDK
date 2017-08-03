@@ -3,6 +3,7 @@ package com.optimove.sdk.optimovemobileclientfull;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.view.View;
+import android.widget.Button;
 import android.widget.TextView;
 
 import com.google.firebase.database.DataSnapshot;
@@ -47,13 +48,25 @@ public class MainActivity extends AppCompatActivity implements OptimoveEventSent
 
     public void failEvent(View view) {
 
-//        Optimove.getInstance().logEvent(new MyBadEvent(), this);
-        Optimove.getInstance().updateUserSignIn("TEST");
-//        Optimove.getInstance().updateUserSignIn(null);
+        Optimove.getInstance().logEvent(new MyBadEvent(), this);
     }
 
     public void sendSecondEvent(View view) {
         Optimove.getInstance().logEvent(new SecondEvent(), this);
+    }
+
+    public void changeUserId(View view) {
+
+        Button button = (Button) view;
+        if (button.getTag().equals("n")) {
+            Optimove.getInstance().updateUserSignIn("TEST");
+            button.setTag("y");
+            button.setText("userId is TEST");
+        } else {
+            Optimove.getInstance().updateUserSignedOut();
+            button.setTag("n");
+            button.setText("userId is null");
+        }
     }
 
     @Override

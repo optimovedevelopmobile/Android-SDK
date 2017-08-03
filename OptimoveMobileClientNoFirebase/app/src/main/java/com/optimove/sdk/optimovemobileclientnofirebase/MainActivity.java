@@ -3,6 +3,7 @@ package com.optimove.sdk.optimovemobileclientnofirebase;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.view.View;
+import android.widget.Button;
 
 import com.optimove.sdk.optimove_sdk.main.Optimove;
 import com.optimove.sdk.optimove_sdk.main.entities.OptimoveEvent;
@@ -24,6 +25,20 @@ public class MainActivity extends AppCompatActivity implements OptimoveEventSent
     public void sendEvent(View view) {
 
         Optimove.getInstance().logEvent(new MyEvent(), this);
+    }
+
+    public void changeUserId(View view) {
+
+        Button button = (Button) view;
+        if (button.getTag().equals("n")) {
+            Optimove.getInstance().updateUserSignIn("TEST");
+            button.setTag("y");
+            button.setText("userId is TEST");
+        } else {
+            Optimove.getInstance().updateUserSignedOut();
+            button.setTag("n");
+            button.setText("userId is null");
+        }
     }
 
     @Override

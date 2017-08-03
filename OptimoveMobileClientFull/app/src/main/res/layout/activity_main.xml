@@ -48,4 +48,15 @@
         app:layout_constraintStart_toEndOf="@id/goodButton"
         app:layout_constraintTop_toBottomOf="@id/badButton"/>
 
+    <Button
+        android:id="@+id/changeUserId"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:onClick="changeUserId"
+        android:text="userId is null"
+        android:tag="n"
+        app:layout_constraintEnd_toStartOf="@id/secondEventButton"
+        app:layout_constraintStart_toEndOf="@id/secondEventButton"
+        app:layout_constraintTop_toBottomOf="@id/secondEventButton"/>
+
 </android.support.constraint.ConstraintLayout>
