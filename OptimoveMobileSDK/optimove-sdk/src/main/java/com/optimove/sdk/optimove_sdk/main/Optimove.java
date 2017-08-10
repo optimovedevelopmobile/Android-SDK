@@ -329,8 +329,8 @@ final public class Optimove {
                 new Handler(Looper.getMainLooper()).post(new Runnable() {
                     @Override
                     public void run() {
-//                        if (configsListener != null)
-//                            configsListener.googlePlayServicesFailed(servicesAvailable);
+                        if (configsListener != null)
+                            configsListener.googlePlayServicesFailed(servicesAvailable);
                     }
                 });
                 return;

@@ -21,52 +21,84 @@ public class OptiPushMessagingService extends FirebaseMessagingService {
     public void onMessageReceived(RemoteMessage remoteMessage) {
 
         super.onMessageReceived(remoteMessage);
-        Optimove.getInstance().setupOptiTrackFromLocalStorage();
-        new NotificationLifecycleObserver(remoteMessage.getMessageId()).onReceived();
-        Notification notification = generateNotificationFromMessage(remoteMessage);
-        NotificationManager manager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
-        manager.notify(NOTIFICATION_ID, notification);
-    }
-
-    private Notification generateNotificationFromMessage(RemoteMessage remoteMessage) {
-
-        NotificationData notificationData = new NotificationData(remoteMessage.getData());
-        Notification.Builder builder;
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
-            builder = new Notification.Builder(this, getApplicationInfo().name);
+        if (!remoteMessage.getData().containsKey(IS_OPTIPUSH_MESSAGE))
+            return;
+        if (Boolean.parseBoolean(remoteMessage.getData().get(IS_OPTIPUSH_MESSAGE)))
+            new OptiPushMessageCommand(remoteMessage).execute();
         else
-            builder = new Notification.Builder(this);
-        return builder
-                .setContentTitle(notificationData.title)
-                .setContentText(notificationData.body)
-                .setDeleteIntent(getPendingIntent(remoteMessage.getMessageId(), true, null))
-                .setContentIntent(getPendingIntent(remoteMessage.getMessageId(), false, notificationData.dynamicLink))
-                .setSmallIcon(getApplicationInfo().icon)
-                .setAutoCancel(true)
-                .build();
+            new ServerMessageCommand(remoteMessage).execute();
     }
 
-    private PendingIntent getPendingIntent(String messageId, boolean isDelete, @Nullable String dynamicLink) {
+    private class OptiPushMessageCommand {
 
-        Intent intent = new Intent(this, NotificationInteractionReceiver.class);
-        intent.putExtra(MESSAGE_ID_KEY, messageId);
-        intent.putExtra(IS_DELETE_KEY, isDelete);
-        if (dynamicLink != null)
-            intent.putExtra(DYNAMIC_LINK_KEY, dynamicLink);
-        int rc = isDelete ? PENDING_INTENT_DELETE_RC : PENDING_INTENT_OPEN_RC;
-        return PendingIntent.getBroadcast(this, rc, intent, PendingIntent.FLAG_UPDATE_CURRENT);
+        private RemoteMessage remoteMessage;
+
+        private OptiPushMessageCommand(RemoteMessage remoteMessage) {
+            this.remoteMessage = remoteMessage;
+        }
+
+        private void execute() {
+
+            Optimove.getInstance().setupOptiTrackFromLocalStorage();
+            new NotificationLifecycleObserver(remoteMessage.getMessageId()).onReceived();
+            Notification notification = generateNotificationFromMessage();
+            NotificationManager manager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+            manager.notify(NOTIFICATION_ID, notification);
+        }
+
+        private Notification generateNotificationFromMessage() {
+
+            NotificationData notificationData = new NotificationData(remoteMessage.getData());
+            Notification.Builder builder;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
+                builder = new Notification.Builder(OptiPushMessagingService.this, getApplicationInfo().name);
+            else
+                builder = new Notification.Builder(OptiPushMessagingService.this);
+            return builder
+                    .setContentTitle(notificationData.title)
+                    .setContentText(notificationData.body)
+                    .setDeleteIntent(getPendingIntent(remoteMessage.getMessageId(), true, null))
+                    .setContentIntent(getPendingIntent(remoteMessage.getMessageId(), false, notificationData.dynamicLink))
+                    .setSmallIcon(getApplicationInfo().icon)
+                    .setAutoCancel(true)
+                    .build();
+        }
+
+        private PendingIntent getPendingIntent(String messageId, boolean isDelete, @Nullable String dynamicLink) {
+
+            Intent intent = new Intent(OptiPushMessagingService.this, NotificationInteractionReceiver.class);
+            intent.putExtra(MESSAGE_ID_KEY, messageId);
+            intent.putExtra(IS_DELETE_KEY, isDelete);
+            if (dynamicLink != null)
+                intent.putExtra(DYNAMIC_LINK_KEY, dynamicLink);
+            int rc = isDelete ? PENDING_INTENT_DELETE_RC : PENDING_INTENT_OPEN_RC;
+            return PendingIntent.getBroadcast(OptiPushMessagingService.this, rc, intent, PendingIntent.FLAG_UPDATE_CURRENT);
+        }
+
+        private class NotificationData {
+
+            String title;
+            String body;
+            String dynamicLink;
+
+            NotificationData(Map<String, String> data) {
+                title = data.get(TITLE_KEY);
+                body = data.get(BODY_KEY);
+                dynamicLink = data.get(DYNAMIC_LINK_KEY);
+            }
+        }
     }
 
-    private class NotificationData {
+    private class ServerMessageCommand {
 
-        String title;
-        String body;
-        String dynamicLink;
+        private RemoteMessage remoteMessage;
 
-        NotificationData(Map<String, String> data) {
-            title = data.get(TITLE_KEY);
-            body = data.get(BODY_KEY);
-            dynamicLink = data.get(DYNAMIC_LINK_KEY);
+        public ServerMessageCommand(RemoteMessage remoteMessage) {
+            this.remoteMessage = remoteMessage;
+        }
+
+        private void execute() {
+
         }
     }
 }

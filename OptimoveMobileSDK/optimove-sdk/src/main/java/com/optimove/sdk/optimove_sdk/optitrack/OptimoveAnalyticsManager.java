@@ -2,7 +2,11 @@ package com.optimove.sdk.optimove_sdk.optitrack;
 
 import android.content.Context;
 import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 
+import com.google.android.gms.ads.identifier.AdvertisingIdClient;
+import com.google.android.gms.common.GooglePlayServicesNotAvailableException;
+import com.google.android.gms.common.GooglePlayServicesRepairableException;
 import com.optimove.sdk.optimove_sdk.main.Optimove;
 import com.optimove.sdk.optimove_sdk.main.OptimoveComponentSetupListener;
 import com.optimove.sdk.optimove_sdk.main.OptimoveComponentType;
@@ -10,13 +14,16 @@ import com.optimove.sdk.optimove_sdk.main.UserInfo;
 import com.optimove.sdk.optimove_sdk.main.entities.OptimoveEvent;
 import com.optimove.sdk.optimove_sdk.main.tools.FileUtils;
 import com.optimove.sdk.optimove_sdk.main.tools.OptiLogger;
-import com.optimove.sdk.optimove_sdk.optipush.registration.OptiPushClientRegistrar;
 
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.piwik.sdk.Piwik;
 import org.piwik.sdk.Tracker;
 import org.piwik.sdk.extra.TrackHelper;
+
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 
 import static com.optimove.sdk.optimove_sdk.optitrack.OptitrackConstants.*;
 
@@ -48,7 +55,38 @@ public class OptimoveAnalyticsManager {
         if (!initialized)
             initialized = executeInit(initData);
         setupListener.onSetupFinished(OptimoveComponentType.OPTITRACK, initialized);
+        tempAdId();
+    }
 
+    private void tempAdId() {
+
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+
+                try {
+                    AdvertisingIdClient.Info advertisingIdInfo = AdvertisingIdClient.getAdvertisingIdInfo(Optimove.getInstance().getContext());
+                    if (advertisingIdInfo != null) {
+                        final String id = advertisingIdInfo.getId();
+                        logEvent(new OptimoveEvent() {
+                            @Override
+                            public String getName() {
+                                return "AdvertisingID";
+                            }
+
+                            @Override
+                            public Map<String, Object> getParameters() {
+                                Map<String, Object> map = new HashMap<>();
+                                map.put("id", id);
+                                return map;
+                            }
+                        }, null);
+                    }
+                } catch (IOException | GooglePlayServicesNotAvailableException | GooglePlayServicesRepairableException e) {
+                    OptiLogger.e(this, e, "Getting Advertising ID");
+                }
+            }
+        }).start();
     }
 
     public void userIdWasUpdated(String userId) {
@@ -61,16 +99,16 @@ public class OptimoveAnalyticsManager {
         mainTracker.dispatch();
     }
 
-    public void logEvent(OptimoveEvent event, OptimoveEventSentListener listener) {
+    public void logEvent(OptimoveEvent event, @Nullable OptimoveEventSentListener listener) {
 
         if (!eventsValidator.getEventConfig(event.getName()).isSupportedOnOptitrack())
             return;
         EventSentResult error = eventsValidator.lookForError(event);
         if (error == null) {
             sendEvent(event);
-            listener.onResponse(EventSentResult.SUCCESS);
+            if (listener != null) listener.onResponse(EventSentResult.SUCCESS);
         } else {
-            listener.onResponse(error);
+            if (listener != null) listener.onResponse(error);
         }
     }
 
