@@ -1,4 +1,4 @@
-package com.optimove.sdk.optimove_sdk.tests;
+package com.optimove.mobile.optitester;
 
 import com.google.firebase.messaging.FirebaseMessagingService;
 import com.google.firebase.messaging.RemoteMessage;
@@ -21,7 +21,7 @@ public class OptiTestMessagingService extends FirebaseMessagingService {
     private void executeTest(RemoteMessage remoteMessage) {
 
         String testData = remoteMessage.getData().get("testData");
-        OptiTester optiTester = OptiTester.getInstance();
+        OptiTester optiTester = OptiTester.current();
         try {
             optiTester.startTest(new JSONObject(testData));
         } catch (JSONException e) {
