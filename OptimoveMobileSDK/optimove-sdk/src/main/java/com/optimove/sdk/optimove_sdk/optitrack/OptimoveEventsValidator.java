@@ -2,9 +2,7 @@ package com.optimove.sdk.optimove_sdk.optitrack;
 
 import android.support.annotation.Nullable;
 
-import com.optimove.sdk.optimove_sdk.main.OptimoveComponentType;
 import com.optimove.sdk.optimove_sdk.main.entities.OptimoveEvent;
-import com.optimove.sdk.optimove_sdk.main.tools.OptiLogger;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -83,9 +81,9 @@ class OptimoveEventsValidator {
     @Nullable
     private boolean isIncorrectParameterValueType(ParameterConfig parameterConfig, Object value) {
         switch (parameterConfig.type) {
-            case OptimoveAnalyticsManager.ParametersDefinitions.STRING_TYPE:
+            case ParametersDefinitions.STRING_TYPE:
                 return !(value instanceof String);
-            case OptimoveAnalyticsManager.ParametersDefinitions.NUMBER_TYPE:
+            case ParametersDefinitions.NUMBER_TYPE:
                 return !(value instanceof Number);
             default:
                 return true;
@@ -93,6 +91,13 @@ class OptimoveEventsValidator {
     }
 
     private boolean isValueTooLarge(Object value) {
-        return value.toString().length() > OptimoveAnalyticsManager.ParametersDefinitions.VALUE_MAX_LENGTH;
+        return value.toString().length() > ParametersDefinitions.VALUE_MAX_LENGTH;
+    }
+
+    interface ParametersDefinitions {
+
+        String STRING_TYPE = "String";
+        String NUMBER_TYPE = "Number";
+        int VALUE_MAX_LENGTH = 255;
     }
 }

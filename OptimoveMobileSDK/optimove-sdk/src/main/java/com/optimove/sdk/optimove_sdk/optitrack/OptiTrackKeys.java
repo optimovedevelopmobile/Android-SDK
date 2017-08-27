@@ -29,8 +29,8 @@ public class OptiTrackKeys {
 
     static OptiTrackKeys fromJson(JSONObject initData) throws JSONException {
 
-        String siteUrl = initData.getString(OptitrackConstants.InitDataKeys.OPTITRACK_ENDPOINT);
-        int siteId = initData.getInt(OptitrackConstants.InitDataKeys.SITE_ID);
+        String siteUrl = initData.getString(OptiTrackManager.Constants.OPTITRACK_ENDPOINT);
+        int siteId = initData.getInt(OptiTrackManager.Constants.SITE_ID);
         return new OptiTrackKeys(siteUrl, siteId);
     }
 }

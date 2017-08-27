@@ -1,8 +1,11 @@
 package com.optimove.sdk.optimove_sdk.optipush.registration;
 
+import android.app.NotificationManager;
 import android.content.ContentResolver;
+import android.content.Context;
 import android.os.Build;
 import android.provider.Settings;
+import android.support.v4.app.NotificationManagerCompat;
 
 import com.optimove.sdk.optimove_sdk.main.Optimove;
 import com.optimove.sdk.optimove_sdk.main.UserInfo;
@@ -20,18 +23,23 @@ public class UserPushToken {
     private String token;
     private String publicCustomerId;
     private boolean isCustomer;
-    private String email;
+    private boolean isRegistration;
+    private boolean optIn;
+    private String osName;
 
-    private UserPushToken() {
+    private UserPushToken(boolean isRegistration) {
 
         this.tenantId = -1;
-        ContentResolver contentResolver = Optimove.getInstance().getContext().getContentResolver();
-        // TODO: 8/3/2017 Maybe user InstanceID.getId() ?????
-        this.deviceId = Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID);
         this.osVersion = String.format("Android %s; %s", Build.VERSION.RELEASE, Build.MODEL);
+        this.osName = "Android";
         this.token = null;
         this.publicCustomerId = null;
-        this.email = null;
+        this.isRegistration = isRegistration;
+        Context context = Optimove.getInstance().getContext();
+        ContentResolver contentResolver = context.getContentResolver();
+        // TODO: 8/3/2017 Maybe user InstanceID.getId() ?????
+        this.deviceId = Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID);
+        this.optIn = NotificationManagerCompat.from(context).areNotificationsEnabled();
     }
 
     public JSONObject toJson() throws JSONException {
@@ -40,10 +48,12 @@ public class UserPushToken {
         jsonObject.put(TENANT_ID, tenantId);
         jsonObject.put(DEVICE_ID, deviceId);
         jsonObject.put(OS_VERSION, osVersion);
-        jsonObject.put(TOKEN, token);
+        jsonObject.put(FCM_TOKEN, token);
         jsonObject.put(PUBLIC_CUSTOMER_ID, publicCustomerId);
         jsonObject.put(IS_CUSTOMER, isCustomer);
-        jsonObject.put(EMAIL, email);
+        jsonObject.put(OS_NAME, osName);
+        jsonObject.put(IS_REGISTRATION, isRegistration);
+        jsonObject.put(OPT_IN, optIn);
         return jsonObject;
     }
 
@@ -51,8 +61,9 @@ public class UserPushToken {
 
         private UserPushToken userPushToken;
 
-        public Builder() {
-            userPushToken = new UserPushToken();
+        public Builder(boolean isRegistration) {
+
+            userPushToken = new UserPushToken(isRegistration);
         }
 
         public Builder setTenantId(int tenantId) {
@@ -69,9 +80,8 @@ public class UserPushToken {
 
         public Builder setUserInfo(UserInfo userInfo) {
 
-            userPushToken.isCustomer = userInfo.getUserId() == null;
-            userPushToken.publicCustomerId = userPushToken.isCustomer ? userInfo.getVisitorId() : userInfo.getUserId();
-            userPushToken.email = userInfo.getEmail();
+            userPushToken.isCustomer = userInfo.getUserId() != null;
+            userPushToken.publicCustomerId = userPushToken.isCustomer ? userInfo.getUserId() : userInfo.getVisitorId();
             return this;
         }
 
@@ -85,9 +95,11 @@ public class UserPushToken {
         String TENANT_ID = "tenantId";
         String DEVICE_ID = "deviceId";
         String OS_VERSION = "osVersion";
-        String TOKEN = "token";
+        String FCM_TOKEN = "fcmToken";
         String PUBLIC_CUSTOMER_ID = "publicCustomerId";
         String IS_CUSTOMER = "isCustomer";
-        String EMAIL = "email";
+        String OS_NAME = "osName";
+        String OPT_IN = "optIn";
+        String IS_REGISTRATION = "optIn";
     }
 }

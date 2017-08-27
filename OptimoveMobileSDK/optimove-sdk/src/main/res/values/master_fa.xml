@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="optimove_sdk_master_fa_api_key">AIzaSyDVSSZ4a-8ncUCoczGA-hbxz6j8xmrHZ7c</string>
-    <string name="optimove_sdk_master_fa_application_id">1:628693349480:android:7cc29dcb9b9fb89e</string>
-    <string name="optimove_sdk_master_fa_database_url">https://mobilesdk-master-dev.firebaseio.com/</string>
-    <string name="optimove_sdk_master_fa_sender_id">628693349480</string>
-    <string name="optimove_sdk_master_fa_storage_bucket">gs://mobilesdk-master-dev.appspot.com/</string>
-    <string name="optimove_sdk_master_fa_project_id">mobilesdk-master-dev</string>
+    <string name="sdk_controller_project_api_key">AIzaSyDVSSZ4a-8ncUCoczGA-hbxz6j8xmrHZ7c</string>
+    <string name="sdk_controller_project_application_id">1:628693349480:android:7cc29dcb9b9fb89e</string>
+    <string name="sdk_controller_project_database_url">https://mobilesdk-master-dev.firebaseio.com/</string>
+    <string name="sdk_controller_project_sender_id">628693349480</string>
+    <string name="sdk_controller_project_storage_bucket">gs://mobilesdk-master-dev.appspot.com/</string>
+    <string name="sdk_controller_project_project_id">mobilesdk-master-dev</string>
 </resources>

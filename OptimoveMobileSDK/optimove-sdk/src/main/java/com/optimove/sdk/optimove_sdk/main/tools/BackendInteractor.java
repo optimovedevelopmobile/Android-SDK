@@ -12,13 +12,13 @@ import org.json.JSONObject;
 
 public class BackendInteractor {
 
-    private static final String BASE_URL = "https://optimovesdkmockendpoint.firebaseapp.com/";
-
     private Context context;
+    private String baseUrl;
 
-    public BackendInteractor(Context context) {
+    public BackendInteractor(Context context, String baseUrl) {
 
         this.context = context;
+        this.baseUrl = baseUrl;
     }
 
     public RequestBuilder<JSONObject> getJson() {
@@ -26,7 +26,7 @@ public class BackendInteractor {
         return new JsonRequestBuilder(null, Request.Method.GET);
     }
 
-    public RequestBuilder<JSONObject> post(JSONObject data) {
+    public RequestBuilder<JSONObject> postJson(JSONObject data) {
 
         return new JsonRequestBuilder(data, Request.Method.POST);
     }
@@ -48,12 +48,12 @@ public class BackendInteractor {
             this.errorListener = null;
         }
 
-        public RequestBuilder destination(String... pathComponents) {
+        public RequestBuilder destination(String urlComponentsPattern, Object... urlComponents) {
 
-            StringBuilder builder = new StringBuilder(BASE_URL);
-            for (String comp : pathComponents)
-                builder.append(comp).append("/");
-            url = builder.deleteCharAt(builder.length() - 1).toString();
+            if (baseUrl.endsWith("/"))
+                url = baseUrl + String.format(urlComponentsPattern, urlComponents);
+            else
+                url = baseUrl + "/" + String.format(urlComponentsPattern, urlComponents);
             return this;
         }
 
@@ -70,7 +70,7 @@ public class BackendInteractor {
         }
 
         protected boolean validateState() {
-            return url != null && successListener != null;
+            return url != null;
         }
 
         public abstract void send();
@@ -86,7 +86,7 @@ public class BackendInteractor {
         public void send() {
 
             if (!validateState())
-                throw new IllegalStateException("Url and success listener must be set");
+                throw new IllegalStateException("A destination must be set");
             RequestQueue requestQueue = Volley.newRequestQueue(context);
             JsonObjectRequest request = new JsonObjectRequest(method, url, data, successListener, errorListener);
             requestQueue.add(request);

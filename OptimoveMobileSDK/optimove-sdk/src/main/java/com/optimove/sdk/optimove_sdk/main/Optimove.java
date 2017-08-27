@@ -3,31 +3,31 @@ package com.optimove.sdk.optimove_sdk.main;
 import android.app.Activity;
 import android.app.Application;
 import android.content.Context;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
-import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 
 import com.android.volley.Response;
 import com.android.volley.VolleyError;
-import com.google.android.gms.common.ConnectionResult;
-import com.google.android.gms.common.GoogleApiAvailability;
 import com.google.firebase.messaging.FirebaseMessaging;
 import com.optimove.sdk.optimove_sdk.main.entities.OptimoveEvent;
 import com.optimove.sdk.optimove_sdk.main.tools.BackendInteractor;
 import com.optimove.sdk.optimove_sdk.main.tools.OptiLogger;
-import com.optimove.sdk.optimove_sdk.optipush.firebase.OptimoveFirebaseInteractor;
-import com.optimove.sdk.optimove_sdk.optipush.registration.OptiPushClientRegistrar;
-import com.optimove.sdk.optimove_sdk.optitrack.OptimoveAnalyticsManager;
+import com.optimove.sdk.optimove_sdk.optipush.OptiPushManager;
+import com.optimove.sdk.optimove_sdk.optitrack.OptiTrackManager;
 import com.optimove.sdk.optimove_sdk.optitrack.OptimoveEventSentListener;
-import com.optimove.sdk.optimove_sdk.optitrack.OptitrackConstants;
 
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static com.optimove.sdk.optimove_sdk.main.Optimove.InitDataJsonKeys.*;
@@ -45,17 +45,35 @@ final public class Optimove {
 
     public static void configure(Application application, TenantToken tenantToken, @Nullable OptimoveConfigurationListener configsListener) {
 
+        configure(application, tenantToken, configsListener, false);
+    }
+
+    public static void configure(Application application, TenantToken tenantToken, @Nullable OptimoveConfigurationListener configsListener, boolean hasDefaultFirebaseApp) {
+
+        ConnectivityManager cm = (ConnectivityManager) application.getSystemService(Context.CONNECTIVITY_SERVICE);
+        NetworkInfo activeNetwork = cm.getActiveNetworkInfo();
+        boolean isConnected = activeNetwork != null && activeNetwork.isConnectedOrConnecting();
+        if (isConnected) {
+            if (configureSharedInstance(application)) return;
+            application.registerActivityLifecycleCallbacks(shared.new OptimoveActivityLifecycleObserver());
+            shared.tenantToken = tenantToken;
+            shared.new Initializer(hasDefaultFirebaseApp, configsListener).initSdkComponents();
+        } else {
+            if (configsListener != null)
+                configsListener.onConfigurationError(OptimoveConfigurationListener.Error.DISCONNECTED_FROM_NETWORK);
+        }
+    }
+
+    private static boolean configureSharedInstance(Application application) {
         if (shared != null)
-            return;
+            return true;
         synchronized (Optimove.class) {
             if (shared == null)
                 shared = new Optimove(application);
             else
-                return;
+                return true;
         }
-        application.registerActivityLifecycleCallbacks(shared.new OptimoveActivityLifecycleObserver());
-        shared.tenantToken = tenantToken;
-        shared.new Initializer(configsListener).initSdkComponents();
+        return false;
     }
 
     public static void startTestMode() {
@@ -78,8 +96,8 @@ final public class Optimove {
     private TenantToken tenantToken;
     private UserInfo userInfo;
     private ComponentsMonitor componentsMonitor;
-    private OptimoveFirebaseInteractor firebaseInteractor;
-    private OptimoveAnalyticsManager analyticsManager;
+    private OptiPushManager optiPushManager;
+    private OptiTrackManager optiTrackManager;
 
     private Optimove(Context context) {
 
@@ -87,51 +105,24 @@ final public class Optimove {
         this.tenantToken = null;
         this.userInfo = UserInfo.newInstance(context);
         this.componentsMonitor = new ComponentsMonitor();
-        this.firebaseInteractor = new OptimoveFirebaseInteractor();
-        this.analyticsManager = new OptimoveAnalyticsManager();
+        this.optiPushManager = null;
+        this.optiTrackManager = null;
     }
 
-    public boolean clientHasFirebase() {
+    public void setUserId(String userId) {
 
-        return firebaseInteractor.doesClientHaveFirebase();
-    }
-
-    public String getSdkFaSenderId() {
-
-        return firebaseInteractor.getSdkFaSenderId();
-    }
-
-    public void updateUserSignIn(String userId) {
-
-        this.updateUserSignIn(userId, null);
-    }
-
-    public void updateUserSignIn(String userId, String email) {
-
+        if (userId == null)
+            return;
         userInfo.setUserId(userId);
-        userInfo.setEmail(email);
-        analyticsManager.userIdWasUpdated(userId);
-        OptiPushClientRegistrar registrar = new OptiPushClientRegistrar(context);
-        if (registrar.isFirstConversion())
-            registrar.registerNewUser();
+        optiTrackManager.userIdWasUpdated(userId);
+        if (optiPushManager != null)
+            optiPushManager.registerNewUserIfNeeded();
     }
 
-    public void updateUserSignedOut() {
-
-        userInfo.setUserId(null);
-        userInfo.setEmail(null);
-        analyticsManager.userIdWasUpdated(null);
-    }
-
-    public void setupOptiTrackFromLocalStorage() {
-
-        analyticsManager.setupFromLocalStorage();
-    }
-
-    public void logEvent(OptimoveEvent event, OptimoveEventSentListener listener) {
+    public void reportEvent(OptimoveEvent event, OptimoveEventSentListener listener) {
 
         if (componentsMonitor.getComponentState(OptimoveComponentType.OPTITRACK) == OptimoveComponentState.ACTIVE)
-            analyticsManager.logEvent(event, listener);
+            optiTrackManager.reportEvent(event, listener);
     }
 
     public Context getContext() {
@@ -144,6 +135,26 @@ final public class Optimove {
 
     public UserInfo getUserInfo() {
         return userInfo;
+    }
+
+    @Nullable
+    public OptiPushManager getOptiPushManager() {
+        if (optiPushManager == null)
+            OptiLogger.w(this, "Attempt to access OptiPush when it's not properly initialized");
+        return optiPushManager;
+    }
+
+    @Nullable
+    public OptiTrackManager getOptiTrackManager() {
+        if (optiTrackManager == null)
+            OptiLogger.w(this, "Attempt to access OptiTrack when it's not properly initialized");
+        return optiTrackManager;
+    }
+
+    public void setupOptiTrackFromLocalStorage() {
+
+        if (optiTrackManager == null)
+            optiTrackManager = OptiTrackManager.newInstanceFromLocalStorage(null);
     }
 
     private class OptimoveActivityLifecycleObserver implements Application.ActivityLifecycleCallbacks {
@@ -173,7 +184,7 @@ final public class Optimove {
         public void onActivityStopped(Activity activity) {
 
             if (componentsMonitor.getComponentState(OptimoveComponentType.OPTITRACK) == OptimoveComponentState.ACTIVE)
-                analyticsManager.dispatchAllEvents();
+                optiTrackManager.dispatchAllEvents();
         }
 
         @Override
@@ -193,83 +204,17 @@ final public class Optimove {
 
         private ComponentsMonitor() {
 
-            initComponentsMap();
-        }
-
-        private void initComponentsMap() {
-
-            stateMap = new HashMap<>(3);
+            stateMap = new HashMap<>(OptimoveComponentType.COUNT);
             stateMap.put(OptimoveComponentType.OPTIPUSH, OptimoveComponentState.UNKNOWN);
             stateMap.put(OptimoveComponentType.OPTITRACK, OptimoveComponentState.UNKNOWN);
-            stateMap.put(OptimoveComponentType.REALTIME, OptimoveComponentState.UNKNOWN);
         }
 
-        OptimoveComponentState getComponentState(OptimoveComponentType type) {
+        private void configureFromInitData(JSONObject initData) {
 
-            return stateMap.get(type);
-        }
-    }
-
-    private class Initializer implements OptimoveComponentSetupListener, Response.Listener<JSONObject>, Response.ErrorListener {
-
-        private AtomicInteger componentsCounter;
-        @Nullable
-        private OptimoveConfigurationListener configsListener;
-
-        Initializer(@Nullable OptimoveConfigurationListener configsListener) {
-
-            this.componentsCounter = new AtomicInteger(0);
-            this.configsListener = configsListener;
-        }
-
-        void initSdkComponents() {
-
-            BackendInteractor backendInteractor = new BackendInteractor(context);
-            backendInteractor.getJson().successListener(this).errorListener(this)
-                    .destination(tenantToken.getToken(), tenantToken.getConfigVersion() + ".json")
-                    .send();
-        }
-
-        @Override
-        public void onResponse(JSONObject response) {
-
-            int permittedComponents = extractComponentsState(response);
-            componentsCounter = new AtomicInteger(permittedComponents);
-            if (componentsMonitor.getComponentState(OptimoveComponentType.OPTITRACK) == OptimoveComponentState.PERMITTED)
-                initOptiTrack(extractOptiTrackData(response));
-            if (componentsMonitor.getComponentState(OptimoveComponentType.OPTIPUSH) == OptimoveComponentState.PERMITTED)
-                initOptiPush(extractOptiPushData(response));
-        }
-
-        @Override
-        public void onErrorResponse(VolleyError error) {
-
-            OptiLogger.w(this, "Failed destination fetch initialization data %s", error.getMessage());
-        }
-
-        @Override
-        public void onSetupFinished(OptimoveComponentType type, boolean success) {
-
-            if (success) {
-                componentsMonitor.stateMap.put(type, OptimoveComponentState.ACTIVE);
-                OptiLogger.d(this, "Initialization finished for %s", type.name());
-                if (componentsCounter.decrementAndGet() == 0 && configsListener != null)
-                    notifyConfigurationFinished(configsListener);
-            } else {
-                componentsMonitor.stateMap.put(type, OptimoveComponentState.BROKEN);
-                OptiLogger.w(this, "Failed to initialize %s", type.name());
-            }
-        }
-
-        private int extractComponentsState(JSONObject response) {
-
-            OptimoveComponentState optitrackState = extractStateOfComponent(response, OPTITRACK_ENABLED);
-            OptimoveComponentState optipushState = extractStateOfComponent(response, OPTIPUSH_ENABLED);
-            OptimoveComponentState realtimeState = extractStateOfComponent(response, REALTIME_ENABLED);
+            OptimoveComponentState optitrackState = extractStateOfComponent(initData, OPTITRACK_ENABLED);
+            OptimoveComponentState optipushState = extractStateOfComponent(initData, OPTIPUSH_ENABLED);
             componentsMonitor.stateMap.put(OptimoveComponentType.OPTITRACK, optitrackState);
             componentsMonitor.stateMap.put(OptimoveComponentType.OPTIPUSH, optipushState);
-            componentsMonitor.stateMap.put(OptimoveComponentType.REALTIME, realtimeState);
-            return countPermittedComponents(new OptimoveComponentState[]{optitrackState, optipushState, realtimeState});
         }
 
         private OptimoveComponentState extractStateOfComponent(JSONObject jsonData, String component) {
@@ -281,21 +226,84 @@ final public class Optimove {
             }
         }
 
-        private int countPermittedComponents(OptimoveComponentState[] states) {
+        OptimoveComponentState getComponentState(OptimoveComponentType type) {
 
-            int permittedComps = 0;
-            for (OptimoveComponentState state : states) {
-                permittedComps += state == OptimoveComponentState.PERMITTED ? 1 : 0;
+            return stateMap.get(type);
+        }
+    }
+
+    private class Initializer implements OptimoveComponentSetupListener, Response.Listener<JSONObject>, Response.ErrorListener {
+
+        private static final String INIT_END_POINT_URL = "https://mobile-sdk-mocked-mbaas.firebaseapp.com";
+
+        private AtomicInteger componentsCounter;
+        private Set<OptimoveConfigurationListener.Error> errors;
+        private boolean hasDefaultFirebaseApp;
+        @Nullable
+        private OptimoveConfigurationListener configsListener;
+
+        Initializer(boolean hasDefaultFirebaseApp, @Nullable OptimoveConfigurationListener configsListener) {
+
+            this.hasDefaultFirebaseApp = hasDefaultFirebaseApp;
+            this.componentsCounter = new AtomicInteger(OptimoveComponentType.COUNT);
+            this.configsListener = configsListener;
+            this.errors = new HashSet<>();
+        }
+
+        void initSdkComponents() {
+
+            BackendInteractor backendInteractor = new BackendInteractor(context, INIT_END_POINT_URL);
+            backendInteractor.getJson().successListener(this).errorListener(this)
+                    .destination("%s/%s.json", tenantToken.getToken(), tenantToken.getConfigVersion())
+                    .send();
+        }
+
+        @Override
+        public void onResponse(JSONObject response) {
+
+            componentsMonitor.configureFromInitData(response);
+            if (optiTrackManager == null)
+                optiTrackManager = OptiTrackManager.newInstance(extractOptiTrackData(response), this);
+            if (optiPushManager == null)
+                optiPushManager = OptiPushManager.newInstance(extractOptiPushData(response), hasDefaultFirebaseApp, this);
+        }
+
+        @Override
+        public void onErrorResponse(VolleyError error) {
+
+            OptiLogger.w(this, "Failed destination fetch initialization data %s", error.getMessage());
+            if (configsListener != null) {
+                configsListener.onConfigurationError(OptimoveConfigurationListener.Error.ERROR);
             }
-            return permittedComps;
+        }
+
+        @Override
+        public void onSetupFinished(final OptimoveComponentType type, final boolean success, final OptimoveConfigurationListener.Error... errors) {
+
+            new Handler(Looper.getMainLooper()).post(new Runnable() {
+                @Override
+                public void run() {
+
+                    if (success) {
+                        componentsMonitor.stateMap.put(type, OptimoveComponentState.ACTIVE);
+                        OptiLogger.d(this, "Initialization finished for %s", type.name());
+                    } else {
+                        componentsMonitor.stateMap.put(type, OptimoveComponentState.BROKEN);
+                        Collections.addAll(Initializer.this.errors, errors);
+                        OptiLogger.w(this, "Failed to initialize %s", type.name());
+                    }
+                    if (componentsCounter.decrementAndGet() == 0)
+                        performFinalConfigurationSteps();
+                }
+            });
         }
 
         private JSONObject extractOptiTrackData(JSONObject jsonObject) {
 
             JSONObject eventsJson = new JSONObject();
             try {
-                eventsJson.put(OptitrackConstants.InitDataKeys.OPTITRACK_META_DATA, jsonObject.getJSONObject(OptitrackConstants.InitDataKeys.OPTITRACK_META_DATA));
-                eventsJson.put(OptitrackConstants.InitDataKeys.EVENTS, jsonObject.getJSONObject(OptitrackConstants.InitDataKeys.EVENTS));
+                eventsJson.put(InitDataJsonKeys.OPTITRACK_META_DATA, jsonObject.getJSONObject(InitDataJsonKeys.OPTITRACK_META_DATA));
+                eventsJson.put(InitDataJsonKeys.EVENTS, jsonObject.getJSONObject(InitDataJsonKeys.EVENTS));
             } catch (JSONException e) {
                 OptiLogger.e(this, e);
             }
@@ -306,53 +314,38 @@ final public class Optimove {
 
             JSONObject firebaseConfigsJson = new JSONObject();
             try {
-                firebaseConfigsJson = initData.getJSONObject(FIREBASE_PROJECT_KEYS);
+                firebaseConfigsJson = initData.getJSONObject(OPTIPUSH_META_DATA);
             } catch (JSONException e) {
                 OptiLogger.e(this, e);
             }
             return firebaseConfigsJson;
         }
 
-        private void initOptiTrack(JSONObject optiTrackData) {
+        private void performFinalConfigurationSteps() {
 
-            if (optiTrackData != null)
-                analyticsManager.setup(optiTrackData, this);
+            boolean notificationsEnabled = optiPushManager.getClientRegistrar().checkAndActIfUserChangedNotificationPermission();
+            if (!notificationsEnabled)
+                errors.add(OptimoveConfigurationListener.Error.NOTIFICATIONS_NOT_GRANTED_BY_USER);
+            if (configsListener != null)
+                notifyConfigurationFinished();
+        }
+
+        @SuppressWarnings("ConstantConditions")
+        private void notifyConfigurationFinished() {
+
+            if (errors.isEmpty())
+                configsListener.onConfigurationSuccess();
             else
-                componentsMonitor.stateMap.put(OptimoveComponentType.OPTITRACK, OptimoveComponentState.BROKEN);
-
-        }
-
-        private void initOptiPush(JSONObject jsonObject) {
-
-            final int servicesAvailable = GoogleApiAvailability.getInstance().isGooglePlayServicesAvailable(context);
-            if (servicesAvailable != ConnectionResult.SUCCESS) {
-                new Handler(Looper.getMainLooper()).post(new Runnable() {
-                    @Override
-                    public void run() {
-                        if (configsListener != null)
-                            configsListener.googlePlayServicesFailed(servicesAvailable);
-                    }
-                });
-                return;
-            }
-            firebaseInteractor.setup(jsonObject, this);
-        }
-
-        private void notifyConfigurationFinished(@NonNull final OptimoveConfigurationListener configsListener) {
-            new Handler(Looper.getMainLooper()).post(new Runnable() {
-                @Override
-                public void run() {
-                    configsListener.onConfigurationFinished();
-                }
-            });
+                configsListener.onConfigurationError(errors.toArray(new OptimoveConfigurationListener.Error[errors.size()]));
         }
     }
 
-    interface InitDataJsonKeys {
+    public interface InitDataJsonKeys {
 
         String OPTITRACK_ENABLED = "enableOptitrack";
         String OPTIPUSH_ENABLED = "enableOptipush";
-        String REALTIME_ENABLED = "enableRealtime";
-        String FIREBASE_PROJECT_KEYS = "firebaseProjectKeys";
+        String OPTITRACK_META_DATA = "optitrackMetaData";
+        String OPTIPUSH_META_DATA = "optipushMetaData";
+        String EVENTS = "events";
     }
 }

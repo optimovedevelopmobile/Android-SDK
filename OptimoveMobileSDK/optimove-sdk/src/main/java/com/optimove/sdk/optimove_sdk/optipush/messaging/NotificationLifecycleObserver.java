@@ -20,15 +20,15 @@ public class NotificationLifecycleObserver {
     }
 
     public void onReceived() {
-        Optimove.getInstance().logEvent(new NotificationEvent("received"), null);
+        Optimove.getInstance().reportEvent(new NotificationEvent("received"), null);
     }
 
     public void onDeleted() {
-        Optimove.getInstance().logEvent(new NotificationEvent("deleted"), null);
+        Optimove.getInstance().reportEvent(new NotificationEvent("deleted"), null);
     }
 
     public void onOpened() {
-        Optimove.getInstance().logEvent(new NotificationEvent("opened"), null);
+        Optimove.getInstance().reportEvent(new NotificationEvent("opened"), null);
     }
 
     private class NotificationEvent implements OptimoveEvent {

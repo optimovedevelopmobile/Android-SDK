@@ -63,12 +63,12 @@ class FirebaseKeys {
     static FirebaseKeys fromJson(JSONObject keysJson) throws JSONException {
 
         return new FirebaseKeys.Builder()
-                .setApiKey(keysJson.getString(OptimoveFirebaseInteractor.FirebaseInteractorConstants.SDK_FA_API_KEY_KEY))
-                .setApplicationId(keysJson.getString(OptimoveFirebaseInteractor.FirebaseInteractorConstants.SDK_FA_APP_ID_KEY))
-                .setDatabaseUrl(keysJson.getString(OptimoveFirebaseInteractor.FirebaseInteractorConstants.SDK_FA_DB_URL_KEY))
-                .setGcmSenderId(keysJson.getString(OptimoveFirebaseInteractor.FirebaseInteractorConstants.SDK_FA_SENDER_ID_KEY))
-                .setStorageBucket(keysJson.getString(OptimoveFirebaseInteractor.FirebaseInteractorConstants.SDK_FA_STORAGE_BUCKET_KEY))
-                .setProjectId(keysJson.getString(OptimoveFirebaseInteractor.FirebaseInteractorConstants.SDK_FA_PROJ_ID_KEY))
+                .setApiKey(keysJson.getString(OptimoveFirebaseInteractor.FirebaseInteractorConstants.FIREBASE_API_KEY_KEY))
+                .setApplicationId(keysJson.getString(OptimoveFirebaseInteractor.FirebaseInteractorConstants.FIREBASE_APP_ID_KEY))
+                .setDatabaseUrl(keysJson.getString(OptimoveFirebaseInteractor.FirebaseInteractorConstants.FIREBASE_DB_URL_KEY))
+                .setGcmSenderId(keysJson.getString(OptimoveFirebaseInteractor.FirebaseInteractorConstants.FIREBASE_SENDER_ID_KEY))
+                .setStorageBucket(keysJson.getString(OptimoveFirebaseInteractor.FirebaseInteractorConstants.FIREBASE_STORAGE_BUCKET_KEY))
+                .setProjectId(keysJson.getString(OptimoveFirebaseInteractor.FirebaseInteractorConstants.FIREBASE_PROJ_ID_KEY))
                 .build();
     }
 

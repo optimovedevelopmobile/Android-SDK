@@ -4,5 +4,6 @@ package com.optimove.sdk.optimove_sdk.main;
  * Created by noy_g on 7/3/2017.
  */
 public enum OptimoveComponentType {
-    REALTIME, OPTITRACK, OPTIPUSH
+    OPTITRACK, OPTIPUSH;
+    public static final int COUNT = 2;
 }
