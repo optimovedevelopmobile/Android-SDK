@@ -90,7 +90,7 @@ public class UserPushToken {
 
             String userId = userInfo.getUserId();
             this.isCustomer = userId != null;
-            this.publicCustomerId = userId;
+            this.publicCustomerId = userId != null ? userId : userInfo.getVisitorId();
             return this;
         }
 
