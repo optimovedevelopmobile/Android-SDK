@@ -1,6 +1,5 @@
 package com.optimove.sdk.optimove_sdk.optipush.registration;
 
-import android.app.NotificationManager;
 import android.content.ContentResolver;
 import android.content.Context;
 import android.os.Build;
@@ -29,12 +28,19 @@ public class UserPushToken {
 
     private UserPushToken(boolean isRegistration) {
 
-        this.tenantId = -1;
+        this(-1, null, null, isRegistration, false);
+    }
+
+    private UserPushToken(int tenantId, String token, String publicCustomerId, boolean isRegistration, boolean isCustomer) {
+
+        this.tenantId = tenantId;
+        this.token = token;
+        this.publicCustomerId = publicCustomerId;
+        this.isRegistration = isRegistration;
+        this.isCustomer = isCustomer;
+
         this.osVersion = String.format("Android %s; %s", Build.VERSION.RELEASE, Build.MODEL);
         this.osName = "Android";
-        this.token = null;
-        this.publicCustomerId = null;
-        this.isRegistration = isRegistration;
         Context context = Optimove.getInstance().getContext();
         ContentResolver contentResolver = context.getContentResolver();
         // TODO: 8/3/2017 Maybe user InstanceID.getId() ?????
@@ -59,34 +65,44 @@ public class UserPushToken {
 
     public static class Builder {
 
-        private UserPushToken userPushToken;
+        private int tenantId;
+        private String token;
+        private String publicCustomerId;
+        private boolean isRegistration;
+        private boolean isCustomer;
 
-        public Builder(boolean isRegistration) {
-
-            userPushToken = new UserPushToken(isRegistration);
+        public Builder() {
         }
 
         public Builder setTenantId(int tenantId) {
 
-            userPushToken.tenantId = tenantId;
+            this.tenantId = tenantId;
             return this;
         }
 
         public Builder setToken(String token) {
 
-            userPushToken.token = token;
+            this.token = token;
             return this;
         }
 
         public Builder setUserInfo(UserInfo userInfo) {
 
-            userPushToken.isCustomer = userInfo.getUserId() != null;
-            userPushToken.publicCustomerId = userPushToken.isCustomer ? userInfo.getUserId() : userInfo.getVisitorId();
+            String userId = userInfo.getUserId();
+            this.isCustomer = userId != null;
+            this.publicCustomerId = userId;
+            return this;
+        }
+
+        public Builder setIsRegistration(boolean isRegistration) {
+
+            this.isRegistration = isRegistration;
             return this;
         }
 
         public UserPushToken build() {
-            return userPushToken;
+
+            return new UserPushToken(tenantId, token, publicCustomerId, isRegistration, isCustomer);
         }
     }
 

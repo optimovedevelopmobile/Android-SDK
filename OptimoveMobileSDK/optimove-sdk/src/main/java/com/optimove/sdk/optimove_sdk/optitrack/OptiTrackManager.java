@@ -34,7 +34,7 @@ public class OptiTrackManager {
     public static OptiTrackManager newInstanceFromLocalStorage(@Nullable OptimoveComponentSetupListener setupListener) {
 
         Context context = Optimove.getInstance().getContext();
-        JSONObject initData = FileUtils.readFile(context, INIT_DATA_FILE_NAME).from(FileUtils.SourceDir.INTERNAL).asJson();
+        JSONObject initData = FileUtils.readFile(context).named(INIT_DATA_FILE_NAME).from(FileUtils.SourceDir.INTERNAL).asJson();
         if (initData == null) {
             OptiLogger.w(OptiTrackManager.class, "Attempt to initialize from local data failed");
             return null;
@@ -92,7 +92,7 @@ public class OptiTrackManager {
     private void backupInitData(JSONObject data) {
 
         Context context = Optimove.getInstance().getContext();
-        FileUtils.write(context, data).to(FileUtils.SourceDir.INTERNAL).named(INIT_DATA_FILE_NAME).now();
+        FileUtils.write(context, data).to(INIT_DATA_FILE_NAME).in(FileUtils.SourceDir.INTERNAL).now();
     }
 
     private boolean executeInit(JSONObject initData) {

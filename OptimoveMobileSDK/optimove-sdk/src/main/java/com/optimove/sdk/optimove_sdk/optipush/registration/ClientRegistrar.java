@@ -2,6 +2,7 @@ package com.optimove.sdk.optimove_sdk.optipush.registration;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.support.annotation.NonNull;
 import android.support.v4.app.NotificationManagerCompat;
 
 import com.android.volley.Response;
@@ -11,6 +12,7 @@ import com.google.firebase.messaging.FirebaseMessaging;
 import com.optimove.sdk.optimove_sdk.main.Optimove;
 import com.optimove.sdk.optimove_sdk.main.TenantToken;
 import com.optimove.sdk.optimove_sdk.main.tools.BackendInteractor;
+import com.optimove.sdk.optimove_sdk.main.tools.FileUtils;
 import com.optimove.sdk.optimove_sdk.main.tools.OptiLogger;
 import com.optimove.sdk.optimove_sdk.optipush.firebase.OptimoveFirebaseInteractor;
 
@@ -85,9 +87,9 @@ public class ClientRegistrar {
         String lastFailedRegToken = registrationPreferences.getString(LAST_FAILED_REG_TOKEN_KEY, null);
         String lastFailedUnregToken = registrationPreferences.getString(LAST_FAILED_UNREG_TOKEN_KEY, null);
         if (lastFailedRegToken != null)
-            new OperationDispatcher(lastFailedRegToken, true).dispatch();
+            new OperationDispatcher(lastFailedRegToken, true).dispatchFromStorage();
         if (lastFailedUnregToken != null)
-            new OperationDispatcher(lastFailedUnregToken, false).dispatch();
+            new OperationDispatcher(lastFailedUnregToken, false).dispatchFromStorage();
     }
 
     public boolean checkAndActIfUserChangedNotificationPermission() {
@@ -124,6 +126,7 @@ public class ClientRegistrar {
 
         private String token;
         private boolean isRegistration;
+        private JSONObject pendingData;
 
         public OperationDispatcher(String token, boolean isRegistration) {
 
@@ -134,9 +137,9 @@ public class ClientRegistrar {
         public void dispatch() {
 
             Context context = Optimove.getInstance().getContext();
-            UserPushToken userPushToken = generateUserPushToken();
             try {
-                new BackendInteractor(context, registrationEndPoint).postJson(userPushToken.toJson())
+                this.pendingData = generateUserPushToken().toJson();
+                new BackendInteractor(context, registrationEndPoint).postJson(pendingData)
                         .successListener(this).errorListener(this).destination("registration")
                         .send();
             } catch (JSONException e) {
@@ -144,14 +147,28 @@ public class ClientRegistrar {
             }
         }
 
+        public void dispatchFromStorage() {
+
+            Context context = Optimove.getInstance().getContext();
+            this.pendingData = FileUtils.readFile(context).named(currentFileNameForOperation()).from(FileUtils.SourceDir.INTERNAL).asJson();
+            if (pendingData == null) {
+                OptiLogger.w(this, "Attempt to operate on empty file named %s", currentFileNameForOperation());
+                return;
+            }
+            new BackendInteractor(context, registrationEndPoint).postJson(pendingData)
+                    .successListener(this).errorListener(this).destination("registration")
+                    .send();
+        }
+
         private UserPushToken generateUserPushToken() {
 
             Optimove optimove = Optimove.getInstance();
             TenantToken tenantToken = optimove.getTenantToken();
-            return new UserPushToken.Builder(isRegistration)
+            return new UserPushToken.Builder()
                     .setTenantId(tenantToken.getTenantId())
-                    .setUserInfo(optimove.getUserInfo())
                     .setToken(token)
+                    .setUserInfo(optimove.getUserInfo())
+                    .setIsRegistration(isRegistration)
                     .build();
         }
 
@@ -159,22 +176,49 @@ public class ClientRegistrar {
         public void onResponse(JSONObject response) {
 
             OptiLogger.d(this, response.toString());
-            String tokenKeyToRemove = isRegistration ? LAST_FAILED_REG_TOKEN_KEY : LAST_FAILED_UNREG_TOKEN_KEY;
-            SharedPreferences.Editor editor = registrationPreferences.edit()
-                    .remove(tokenKeyToRemove)
-                    .putString(LAST_TOKEN, token);
+            SharedPreferences.Editor editor = registrationPreferences.edit();
+            updateOperationFlagsForSuccess(editor);
+            clearCachedFailureData(editor);
+            editor.apply();
+        }
+
+        private void updateOperationFlagsForSuccess(SharedPreferences.Editor editor) {
+
             int conversionStat = registrationPreferences.getInt(FIRST_CONVERSION_REGISTRATION_STATUS_KEY, 0);
             if (conversionStat == FIRST_CONVERSION_PENDING)
                 editor.putInt(FIRST_CONVERSION_REGISTRATION_STATUS_KEY, FIRST_CONVERSION_DONE);
-            editor.apply();
+            editor.putString(LAST_TOKEN, token);
+            try {
+                editor.putBoolean(LAST_NOTIFICATION_PERMISSION_STATUS, pendingData.getBoolean(UserPushToken.UserPushTokenJsonKeys.OPT_IN));
+            } catch (JSONException e) {
+                OptiLogger.e(this, e);
+            }
+        }
+
+        private void clearCachedFailureData(SharedPreferences.Editor editor) {
+
+            Context context = Optimove.getInstance().getContext();
+            FileUtils.deleteFile(context).named(currentFileNameForOperation()).from(FileUtils.SourceDir.INTERNAL).now();
+            editor.remove(currentTokenForOperation());
         }
 
         @Override
         public void onErrorResponse(VolleyError error) {
 
             OptiLogger.w(this, "Failed destination register user set:\n%s", error.getMessage());
-            String tokenKeyToSet = isRegistration ? LAST_FAILED_REG_TOKEN_KEY : LAST_FAILED_UNREG_TOKEN_KEY;
-            registrationPreferences.edit().putString(tokenKeyToSet, token).apply();
+            registrationPreferences.edit().putString(currentTokenForOperation(), token).apply();
+            Context context = Optimove.getInstance().getContext();
+            FileUtils.write(context, pendingData).to(currentFileNameForOperation()).in(FileUtils.SourceDir.INTERNAL).now();
+        }
+
+        @NonNull
+        private String currentTokenForOperation() {
+            return isRegistration ? LAST_FAILED_REG_TOKEN_KEY : LAST_FAILED_UNREG_TOKEN_KEY;
+        }
+
+        @NonNull
+        private String currentFileNameForOperation() {
+            return isRegistration ? LAST_FAILED_REG_DATA_FILE_NAME : LAST_FAILED_UNREG_DATA_FILE_NAME;
         }
     }
 
@@ -191,7 +235,9 @@ public class ClientRegistrar {
         int FIRST_CONVERSION_DONE = 2;
 
         String LAST_FAILED_REG_TOKEN_KEY = "lastRegistrationToken";
+        String LAST_FAILED_REG_DATA_FILE_NAME = "lastRegistrationRequestData.json";
         String LAST_FAILED_UNREG_TOKEN_KEY = "lastUnregistrationToken";
+        String LAST_FAILED_UNREG_DATA_FILE_NAME = "lastUnregistrationRequestData.json";
 
         String ANDROID_TOPIC = "Android";
         String OPTIPUSH_GENERAL_TOPIC = "OptipushGeneral";

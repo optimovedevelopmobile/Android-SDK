@@ -10,9 +10,9 @@ import java.io.*;
 
 public class FileUtils {
 
-    public static Reader readFile(Context context, String fileName) {
+    public static Reader readFile(Context context) {
 
-        return new Reader(context, fileName);
+        return new Reader(context);
     }
 
     public static <T> Writer write(Context context, T content) {
@@ -20,9 +20,9 @@ public class FileUtils {
         return new Writer<>(context, content);
     }
 
-    public static Deleter deleteFile(Context context, String fileName) {
+    public static Deleter deleteFile(Context context) {
 
-        return new Deleter(context, fileName);
+        return new Deleter(context);
     }
 
     private static String getFullFileName(String fileName) {
@@ -54,14 +54,23 @@ public class FileUtils {
         private String fileName;
         private FileInputStream fileInputStream;
 
-        private Reader(Context context, String fileName) {
+        private Reader(Context context) {
 
             this.context = context;
+        }
+
+        public Reader named(String fileName) {
+
             this.fileName = getFullFileName(fileName);
+            return this;
         }
 
         public Reader from(SourceDir sourceDir) {
 
+            if (fileName == null) {
+                OptiLogger.e(this, "Missing file name to read from");
+                return this;
+            }
             switch (sourceDir) {
                 case CACHE:
                     File file = new File(context.getCacheDir(), fileName);
@@ -130,7 +139,7 @@ public class FileUtils {
     public static class Writer<T> {
 
         private Context context;
-        private SourceDir sourceDir;
+        private String fileName;
         private T content;
         private FileOutputStream fileOutputStream;
 
@@ -140,22 +149,21 @@ public class FileUtils {
             this.content = content;
         }
 
-        public Writer<T> to(SourceDir sourceDir) {
+        public Writer<T> to(String fileName) {
 
-            this.sourceDir = sourceDir;
+            this.fileName = getFullFileName(fileName);
             return this;
         }
 
-        public Writer named(String fileName) {
+        public Writer in(SourceDir sourceDir) {
 
-            String fullFileName = getFullFileName(fileName);
-            if (sourceDir == null) {
-                OptiLogger.e(this, "Parent dir wasn't set when attempting to write");
+            if (fileName == null) {
+                OptiLogger.e(this, "Missing a file name to write to");
                 return this;
             }
             switch (sourceDir) {
                 case CACHE:
-                    File file = new File(context.getCacheDir(), fullFileName);
+                    File file = new File(context.getCacheDir(), fileName);
                     boolean fileExists = createFile(file);
                     if (!fileExists) {
                         OptiLogger.e(this, "File name %s couldn't be created for write operation");
@@ -169,7 +177,7 @@ public class FileUtils {
                     break;
                 case INTERNAL:
                     try {
-                        fileOutputStream = context.openFileOutput(fullFileName, Context.MODE_PRIVATE);
+                        fileOutputStream = context.openFileOutput(fileName, Context.MODE_PRIVATE);
                     } catch (FileNotFoundException e) {
                         OptiLogger.e(this, e);
                     }
@@ -207,10 +215,15 @@ public class FileUtils {
         private String fileName;
         private SourceDir sourceDir;
 
-        private Deleter(Context context, String fileName) {
+        private Deleter(Context context) {
 
             this.context = context;
+        }
+
+        public Deleter named(String fileName) {
+
             this.fileName = getFullFileName(fileName);
+            return this;
         }
 
         public Deleter from(SourceDir sourceDir) {
@@ -223,6 +236,10 @@ public class FileUtils {
 
             if (sourceDir == null) {
                 OptiLogger.e(this, "Parent dir wasn't set when attempting to delete");
+                return false;
+            }
+            if (fileName == null) {
+                OptiLogger.e(this, "Missing a file name to delete");
                 return false;
             }
             switch (sourceDir) {
